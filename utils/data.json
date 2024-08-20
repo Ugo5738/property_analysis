@@ -1,0 +1,92 @@
+{
+    "living_space": [
+        "dining room",
+        "playroom",
+        "library",
+        "family room",
+        "sitting room",
+        "lounge",
+        "home office",
+        "game room",
+        "living room",
+        "study",
+        "media room",
+        "den",
+        "music room"
+    ],
+    "kitchen_space": [
+        "breakfast nook",
+        "utility room",
+        "pantry",
+        "laundry room",
+        "kitchen",
+        "mudroom",
+        "kitchenette",
+        "butlers pantry",
+        "scullery"
+    ],
+    "bathroom_space": [
+        "powder room",
+        "half bath",
+        "master bathroom",
+        "wet room",
+        "sauna room",
+        "bathroom",
+        "guest bathroom",
+        "shower room",
+        "en-suite bathroom"
+    ],
+    "bedroom_space": [
+        "kids' bedroom",
+        "teen bedroom",
+        "master bedroom",
+        "spare room",
+        "dorm room",
+        "walk in wardrobe",
+        "bedroom",
+        "guest bedroom",
+        "nursery",
+        "attic bedroom"
+    ],
+    "front_garden_space": [
+        "entryway",
+        "veranda",
+        "front garden",
+        "others",
+        "porch",
+        "front steps",
+        "driveway",
+        "front yard",
+        "neighborhood",
+        "other",
+        "carport",
+        "walkway"
+    ],
+    "back_garden_space": [
+        "gazebo",
+        "deck",
+        "courtyard",
+        "pool area",
+        "vegetable garden",
+        "greenhouse",
+        "herb garden",
+        "back garden",
+        "garden shed",
+        "patio",
+        "backyard",
+        "pergola"
+    ],
+    "others": [
+        "riverbank",
+        "public transportation",
+        "street view",
+        "road with a bus",
+        "waterfront",
+        "river view",
+        "aerial view",
+        "other",
+        "river with boats",
+        "road",
+        "boat dock"
+    ]
+}
