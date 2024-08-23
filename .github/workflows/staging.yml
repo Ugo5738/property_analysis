@@ -89,7 +89,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/resumeoptimizer:staging-${{ github.sha }},${{ secrets.DOCKER_HUB_USERNAME }}/resumeoptimizer:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/propertyanalysis:staging-${{ github.sha }},${{ secrets.DOCKER_HUB_USERNAME }}/propertyanalysis:latest
 
   deploy:
     needs: build-and-push-image
@@ -110,11 +110,11 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: echo $GPG_PASSPHRASE | gpg --quiet --batch --yes --decrypt --passphrase-fd 0 --output ./.env ./.env.gpg
       - name: Transfer Repository to Remote Server (Including Decrypted .env)
-        run: rsync -avz -e "ssh -i ~/.ssh/id_rsa" ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/home/ubuntu/resumeoptimizer/
+        run: rsync -avz -e "ssh -i ~/.ssh/id_rsa" ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/home/ubuntu/propertyanalysis/
       - name: Deploy to server
         uses: appleboy/ssh-action@master
         env:
-          DOCKER_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/resumeoptimizer:staging-${{ github.sha }}
+          DOCKER_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/propertyanalysis:staging-${{ github.sha }}
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
@@ -123,7 +123,7 @@ jobs:
           script: |
             echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
-            cd /home/ubuntu/resumeoptimizer/
+            cd /home/ubuntu/propertyanalysis/
             docker pull $DOCKER_IMAGE
 
             # Ensure scripts are executable (in case they are not already)
@@ -170,6 +170,6 @@ jobs:
             # This cron job is scheduled to run at midnight every day, performing a Docker system prune
             # to remove unused Docker objects and logs the output to /var/log/docker_cleanup.log.
 
-# username = resumeguru
-# repo name = resumeoptimizer
-# .env encrypt with resume
+# username = melveraai  # propertyanalysisai
+# repo name = propertyanalysis
+# .env encrypt with propertyanalysis

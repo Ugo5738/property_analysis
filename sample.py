@@ -263,3 +263,18 @@
   },
   'Image_Analysis': {}
 }
+
+
+
+
+# https://botpress.com/
+
+# https://docs.nlkit.com/nlux
+
+# https://www.voiceflow.com/
+
+# https://botonic.io/
+
+
+# framework that is js, react, next, based that has the functionality of botpress or voice flow and the seamless integration into the javascript webapp like nlux
+# chatbot first javascript frontend
