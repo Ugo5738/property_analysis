@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate, login
 from django.core.mail import send_mail
 from django.http import JsonResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -30,6 +31,13 @@ from accounts.serializers import (
 )
 
 # from utils.email_utils import send_verification_email
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class GetCSRFToken(APIView):
+    def get(self, request):
+        csrf_token = get_token(request)
+        return JsonResponse({"success": "CSRF cookie set", "csrftoken": csrf_token})
 
 
 # class RegisterAPIView(GenericAPIView):
@@ -128,12 +136,6 @@ from accounts.serializers import (
 
 #         except User.DoesNotExist:
 #             return Response({"error": "User with this email does not exist"}, status=status.HTTP_404_NOT_FOUND)
-
-
-@method_decorator(ensure_csrf_cookie, name='dispatch')
-class GetCSRFToken(APIView):
-    def get(self, request):
-        return JsonResponse({"success": "CSRF cookie set"})
 
 
 class LoginView(APIView):

@@ -150,6 +150,7 @@ async def download_images(property_instance, update_progress, max_retries=3, ret
 
                         property_image = await PropertyImage.objects.acreate(
                             property=property_instance,
+                            original_url=image_url,
                             created_at=timezone.now()
                         )
 
@@ -161,12 +162,12 @@ async def download_images(property_instance, update_progress, max_retries=3, ret
 
                         print(f"PropertyImage object created with ID: {property_image.id}")
 
-                        # Verify file was saved
-                        if property_image.image:
-                            # print(f"Image file saved at: {property_image.image.path}")
-                            print(f"File exists: {await sync_to_async(os.path.exists)(property_image.image.path)}")
-                        else:
-                            print("Image file was not saved properly")
+                        # # Verify file was saved
+                        # if property_image.image:
+                        #     # print(f"Image file saved at: {property_image.image.path}")
+                        #     print(f"File exists: {await sync_to_async(os.path.exists)(property_image.image.path)}")
+                        # else:
+                        #     print("Image file was not saved properly")
 
                         image_ids.append(property_image.id)
                         await update_progress('download', f'Downloaded image {idx + 1}', (idx + 1) / len(property_instance.image_urls) * 100)

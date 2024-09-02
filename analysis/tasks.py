@@ -47,18 +47,11 @@ async def analyze_property_async(property_id, task_id, user_id):
 
         # Process property
         result = await process_property(property_instance.url, image_ids, update_progress)
-        print("I am here 4")
+
         # Update property with results
         property_instance.overall_condition = result['Condition']
         property_instance.detailed_analysis = result['Detailed Analysis']
         await property_instance.asave()
-
-        # # Update individual image analysis results
-        # async for image in PropertyImage.objects.filter(id__in=result['Image_Analysis'].keys()):
-        #     analysis = result['Image_Analysis'][str(image.id)]
-        #     image.category = analysis['category']
-        #     image.analysis_result = analysis['result']
-        #     await image.asave()
 
         task_instance.status = 'COMPLETED'
         task_instance.progress = 100.0

@@ -14,16 +14,16 @@ from .models import (
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
-    list_display = ('url', 'created_at', 'updated_at', 'overall_condition_summary', 'failed_downloads_count')
+    list_display = ('url', 'created_at', 'updated_at', 'failed_downloads_count')  # , 'overall_condition_summary')
     list_filter = ('created_at', 'updated_at')
     search_fields = ('url',)
     readonly_fields = ('created_at', 'updated_at')
 
-    def overall_condition_summary(self, obj):
-        if obj.overall_condition:
-            return ', '.join(f"{k}: {v}" for k, v in obj.overall_condition.items())
-        return "N/A"
-    overall_condition_summary.short_description = "Overall Condition"
+    # def overall_condition_summary(self, obj):
+    #     if obj.overall_condition:
+    #         return ', '.join(f"{k}: {v}" for k, v in obj.overall_condition.items())
+    #     return "N/A"
+    # overall_condition_summary.short_description = "Overall Condition"
 
     def failed_downloads_count(self, obj):
         return len(obj.failed_downloads)

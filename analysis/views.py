@@ -86,5 +86,3 @@ class PropertyImageViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(created_images, many=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-

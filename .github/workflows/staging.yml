@@ -170,6 +170,6 @@ jobs:
             # This cron job is scheduled to run at midnight every day, performing a Docker system prune
             # to remove unused Docker objects and logs the output to /var/log/docker_cleanup.log.
 
-# username = melveraai  # propertyanalysisai
+# username = propertyanalysisai
 # repo name = propertyanalysis
 # .env encrypt with propertyanalysis

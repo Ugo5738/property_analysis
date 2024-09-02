@@ -1,5 +1,3 @@
-# utils/property_analysis.py
-
 import asyncio
 import base64
 import json
@@ -193,7 +191,8 @@ async def merge_grouped_images(property_instance, results, update_step_progress)
             # results['stages']['merged_images'][f"{group.main_category}_{group.sub_category}"] = merged_property_image.image.path
             # Store the path in results
             results['stages']['merged_images'].setdefault(f"{group.main_category}_{group.sub_category}", []).append(
-                merged_property_image.image.path
+                # merged_property_image.image.path
+                merged_property_image.image.url
             )
         await update_step_progress('merging', f'Merged group {idx+1}/{total_groups}', (idx+1)/total_groups)
 
