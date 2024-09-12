@@ -77,7 +77,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         task = get_object_or_404(AnalysisTask, id=pk)
         property_instance = task.property
         
-        if task.status != 'COMPLETED':
+        if task.status != 'complete':
             return Response({
                 'status': task.status,
                 'progress': task.progress,
