@@ -44,48 +44,56 @@ async def process_property(property_url, image_ids, update_progress):
         progress = (step / total_steps + sub_progress / total_steps) * 100
         await update_progress(stage, message, progress)
 
-    # Step 1: Initial categorization
-    step = 1
-    await update_step_progress('categorization', 'Categorizing images', 0)
-    await categorize_images(property_instance, image_ids, results, update_step_progress)
+    try:
+        # Step 1: Initial categorization
+        step = 1
+        await update_step_progress('categorization', 'Categorizing images', 0)
+        await categorize_images(property_instance, image_ids, results, update_step_progress)
 
-    # Step 2: Grouping images
-    step = 2
-    await update_step_progress('grouping', 'Grouping images by category', 0)
-    await group_images(property_instance, results, update_step_progress)
+        # Step 2: Grouping images
+        step = 2
+        await update_step_progress('grouping', 'Grouping images by category', 0)
+        await group_images(property_instance, results, update_step_progress)
 
-    # Step 3: Merging images
-    step = 3
-    await update_step_progress('merging', 'Merging grouped images', 0)
-    await merge_grouped_images(property_instance, results, update_step_progress)
+        # Step 3: Merging images
+        step = 3
+        await update_step_progress('merging', 'Merging grouped images', 0)
+        await merge_grouped_images(property_instance, results, update_step_progress)
 
-    # Step 4: Detailed analysis
-    step = 4
-    await update_step_progress('analysis', 'Analyzing merged images', 0)
-    all_condition_ratings = await analyze_merged_images(property_instance, results, update_step_progress)
+        # Step 4: Detailed analysis
+        step = 4
+        await update_step_progress('analysis', 'Analyzing merged images', 0)
+        all_condition_ratings = await analyze_merged_images(property_instance, results, update_step_progress)
 
-    # Step 5: Overall condition calculation
-    step = 5
-    await update_step_progress('overall_analysis', 'Calculating overall property condition', 0)
-    property_condition = analyze_property_condition(all_condition_ratings)
-    results['stages']['overall_condition'] = property_condition
-    print(f"This is the final results: {results}")
-    await update_step_progress('overall_analysis', 'Finished calculating overall condition', 1)
+        # Step 5: Overall condition calculation
+        step = 5
+        await update_step_progress('overall_analysis', 'Calculating overall property condition', 0)
+        property_condition = analyze_property_condition(all_condition_ratings)
+        results['stages']['overall_condition'] = property_condition
+        print(f"This is the final results: {results}")
+        await update_step_progress('overall_analysis', 'Finished calculating overall condition', 1)
 
-    # Final result compilation
-    final_result = {
-        'Property URL': property_url,
-        'Condition': property_condition,
-        'Detailed Analysis': results['stages']['detailed_analysis'],
-        'Analysis Stages': results['stages']
-    }
+        # Final result compilation
+        final_result = {
+            'Property URL': property_url,
+            'Condition': property_condition,
+            'Detailed Analysis': results['stages']['detailed_analysis'],
+            'Analysis Stages': results['stages']
+        }
 
-    return final_result
+        return final_result
 
+    except Exception as e:
+        error_message = f"Error during analysis: {str(e)}"
+        print(error_message)
+        import traceback
+        traceback.print_exc()
+        await update_progress('error', error_message, 0.0)
+        return {"error": error_message}
 
 async def categorize_images(property_instance, image_ids, results, update_step_progress):
     total_batches = (len(image_ids) + 3) // 4  # Round up division
-    for i in range(0, len(image_ids), 4):
+    for batch_num, i in enumerate(range(0, len(image_ids), 4), 1):
         batch = image_ids[i:i+4]
         if not batch:
             continue
@@ -114,7 +122,7 @@ async def categorize_images(property_instance, image_ids, results, update_step_p
                 else:
                     print(f"No result for image at index {index}")
 
-        await update_step_progress('categorization', f'Categorized batch {i+1}/{total_batches}', (i+1)/total_batches)
+        await update_step_progress('categorization', f'Categorized batch {batch_num}/{total_batches}', (batch_num)/total_batches)
 
 
 async def update_property_image_category(image_id, category_info):
@@ -150,52 +158,103 @@ async def update_property_image_category(image_id, category_info):
 
 
 async def group_images(property_instance, results, update_step_progress):
-    images = await sync_to_async(list)(PropertyImage.objects.filter(property=property_instance))
+    try:
+        print(f"Starting grouping images for property: {property_instance.url}")
+        images = await sync_to_async(list)(PropertyImage.objects.filter(property=property_instance))
+        print(f"Total images found: {len(images)}")
 
-    for image in images:
-        group, created = await GroupedImages.objects.aget_or_create(
-            property=property_instance,
-            main_category=image.main_category,
-            sub_category=image.sub_category
-        )
-        await group.images.aadd(image)
+        for image in images:
+            try:
+                print(f"Processing image: {image.id} - Main category: {image.main_category}, Sub category: {image.sub_category}")                
+                group, created = await GroupedImages.objects.aget_or_create(
+                    property=property_instance,
+                    main_category=image.main_category,
+                    sub_category=image.sub_category
+                )
+                await group.images.aadd(image)
 
-        if created:
-            results['stages']['grouped_images'].setdefault(image.main_category, {})[image.sub_category] = []
-        results['stages']['grouped_images'][image.main_category][image.sub_category].append(image.id)
+                if created:
+                    print(f"Created new group: {image.main_category} - {image.sub_category}")
+                    results['stages']['grouped_images'].setdefault(image.main_category, {})[image.sub_category] = []
+                
+                results['stages']['grouped_images'][image.main_category][image.sub_category].append(image.id)
+                print(f"Added image {image.id} to group {image.main_category} - {image.sub_category}")
+            
+            except Exception as e:
+                print(f"Error processing image {image.id}: {str(e)}")
+                import traceback
+                traceback.print_exc()
 
-    await update_step_progress('grouping', 'Finished grouping images', 1)
+        print("Finished grouping all images")
+        await update_step_progress('grouping', 'Finished grouping images', 1)
 
+    except Exception as e:
+        print(f"Error in group_images function: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise  # Re-raise the exception to be caught by the calling function
+
+    print("Group images results:")
+    print(json.dumps(results['stages']['grouped_images'], indent=2))
+    
 
 async def merge_grouped_images(property_instance, results, update_step_progress):
-    grouped_images = await sync_to_async(list)(GroupedImages.objects.filter(property=property_instance))
-    total_groups = len(grouped_images)
+    try:
+        print(f"Starting merging grouped images for property: {property_instance.url}")
+        grouped_images = await sync_to_async(list)(GroupedImages.objects.filter(property=property_instance))
+        total_groups = len(grouped_images)
+        print(f"Total grouped images: {total_groups}")
 
-    for idx, group in enumerate(grouped_images):
-        images = await sync_to_async(list)(group.images.all())
+        for idx, group in enumerate(grouped_images):
+            try:
+                print(f"Processing group: {group.id} - {group.main_category} - {group.sub_category}")
+                images = await sync_to_async(list)(group.images.all())
+                print(f"Images in group: {len(images)}")
 
-        # Split into subgroups of 4 if there are more than 4 images
-        subgroups = [images[i:i+4] for i in range(0, len(images), 4)]
+                # Split into subgroups of 4 if there are more than 4 images
+                subgroups = [images[i:i+4] for i in range(0, len(images), 4)]
 
-        for subgroup in subgroups:
-            merged_image = await merge_images(subgroup)
+                for subgroup_idx, subgroup in enumerate(subgroups):
+                    try:
+                        print(f"Merging subgroup {subgroup_idx + 1} of {len(subgroups)}")
+                        merged_image = await merge_images(subgroup)
 
-            merged_property_image = await MergedPropertyImage.objects.acreate(
-                property=property_instance,
-                main_category=group.main_category,
-                sub_category=group.sub_category
-            )
-            filename = f"merged_image_{merged_property_image.id}.jpg"
-            await sync_to_async(merged_property_image.image.save)(filename, ContentFile(merged_image), save=True)
+                        merged_property_image = await MergedPropertyImage.objects.acreate(
+                            property=property_instance,
+                            main_category=group.main_category,
+                            sub_category=group.sub_category
+                        )
+                        filename = f"merged_image_{merged_property_image.id}.jpg"
+                        await sync_to_async(merged_property_image.image.save)(filename, ContentFile(merged_image), save=True)
 
-            # results['stages']['merged_images'][f"{group.main_category}_{group.sub_category}"] = merged_property_image.image.path
-            # Store the path in results
-            results['stages']['merged_images'].setdefault(f"{group.main_category}_{group.sub_category}", []).append(
-                # merged_property_image.image.path
-                merged_property_image.image.url
-            )
-        await update_step_progress('merging', f'Merged group {idx+1}/{total_groups}', (idx+1)/total_groups)
+                        results['stages']['merged_images'].setdefault(f"{group.main_category}_{group.sub_category}", []).append(
+                            merged_property_image.image.url
+                        )
+                        print(f"Created merged image: {merged_property_image.id}")
 
+                    except Exception as e:
+                        print(f"Error merging subgroup {subgroup_idx + 1}: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
+
+            except Exception as e:
+                print(f"Error processing group {group.id}: {str(e)}")
+                import traceback
+                traceback.print_exc()
+
+            await update_step_progress('merging', f'Merged group {idx+1}/{total_groups}', (idx+1)/total_groups)
+
+        print("Finished merging all grouped images")
+
+    except Exception as e:
+        print(f"Error in merge_grouped_images function: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise  # Re-raise the exception to be caught by the calling function
+
+    print("Merged images results:")
+    print(json.dumps(results['stages']['merged_images'], indent=2))
+    
 
 async def analyze_merged_images(property_instance, results, update_step_progress):
     merged_images = await sync_to_async(list)(MergedPropertyImage.objects.filter(property=property_instance))
@@ -243,18 +302,6 @@ async def analyze_merged_images(property_instance, results, update_step_progress
                 image_analyses = parsed_result.get('images', [])
 
                 processed_analyses = []
-                for analysis in image_analyses:
-                    condition_label = analysis.get("condition", "Unknown").lower()
-                    all_condition_ratings.append(condition_label)
-                    processed_analyses.append({
-                        "image_number": analysis.get("image_tag_number", "Unknown"),
-                        "condition_label": condition_label,
-                        "reasoning": analysis.get("reasoning", "No reasoning provided")
-                    })
-
-                results['stages']['detailed_analysis'][f"{merged_image.main_category}_{merged_image.sub_category}"] = processed_analyses
-
-                # Update individual PropertyImage instances
                 group_images = await sync_to_async(list)(
                     PropertyImage.objects.filter(
                         property=property_instance,
@@ -262,10 +309,24 @@ async def analyze_merged_images(property_instance, results, update_step_progress
                         sub_category=merged_image.sub_category
                     )
                 )
-                for img, analysis in zip(group_images, processed_analyses):
-                    img.condition_label = analysis['condition_label']
-                    img.reasoning = analysis['reasoning']
+                for analysis, img in zip(image_analyses, group_images):
+                    condition_label = analysis.get("condition", "Unknown").lower()
+                    all_condition_ratings.append(condition_label)
+                    processed_analysis = {
+                        "image_number": analysis.get("image_tag_number", "Unknown"),
+                        "condition_label": condition_label,
+                        "reasoning": analysis.get("reasoning", "No reasoning provided"),
+                        "image_url": img.image.url if img.image else None,
+                        "image_id": img.id
+                    }
+                    processed_analyses.append(processed_analysis)
+
+                    # Update individual PropertyImage instances
+                    img.condition_label = condition_label
+                    img.reasoning = analysis.get("reasoning", "No reasoning provided")
                     await img.asave()
+
+                results['stages']['detailed_analysis'][f"{merged_image.main_category}_{merged_image.sub_category}"] = processed_analyses
 
             except json.JSONDecodeError:
                 print(f"Error decoding JSON for {merged_image.main_category}_{merged_image.sub_category}: {result}")

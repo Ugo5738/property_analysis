@@ -2,7 +2,7 @@ from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
 
-from analysis.models import AnalysisTask, Property, PropertyImage
+from analysis.models import AnalysisTask, Property, PropertyImage, GroupedImages, MergedPropertyImage
 from utils.image_processing import download_images
 from utils.property_analysis import process_property
 
@@ -17,9 +17,6 @@ async def analyze_property_async(property_id, task_id, user_id):
     task_instance = await AnalysisTask.objects.aget(id=task_id)
 
     async def update_progress(stage, message, progress):
-        print("This is the stage: ", stage)
-        print("This is the message: ", message)
-        print("This is the progress: ", progress)
         task_instance.status = stage
         task_instance.progress = progress
         task_instance.stage = stage
@@ -40,7 +37,6 @@ async def analyze_property_async(property_id, task_id, user_id):
     try:
         # Download images
         await update_progress('download', 'Downloading images', 0)
-
         image_ids, failed_downloads = await download_images(property_instance, update_progress)
         property_instance.failed_downloads = failed_downloads
         await property_instance.asave()
@@ -64,3 +60,24 @@ async def analyze_property_async(property_id, task_id, user_id):
         await task_instance.asave()
         property_instance.overall_condition = {'error': str(e)}
         await property_instance.asave()
+
+
+def clear_property_data(property_instance):
+    # Delete associated PropertyImage objects
+    PropertyImage.objects.filter(property=property_instance).delete()
+
+    # Delete associated GroupedImages objects
+    GroupedImages.objects.filter(property=property_instance).delete()
+
+    # Delete associated MergedPropertyImage objects
+    MergedPropertyImage.objects.filter(property=property_instance).delete()
+
+    # Delete associated AnalysisTask objects
+    AnalysisTask.objects.filter(property=property_instance).delete()
+
+    # Clear analysis results and reset fields
+    property_instance.overall_condition = None
+    property_instance.detailed_analysis = None
+    property_instance.failed_downloads = []
+    property_instance.image_urls = []
+    property_instance.save()

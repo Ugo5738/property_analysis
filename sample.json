@@ -1,0 +1,180 @@
+{
+  "property_url": "https://www.onthemarket.com/details/15272275/",
+  "stages": {
+    "initial_categorization": [
+      { "category": "internal", "details": { "room_type": "living room" } },
+      { "category": "external", "details": { "exterior_type": "backyard" } },
+      { "category": "external", "details": { "exterior_type": "backyard" } },
+      { "category": "internal", "details": { "room_type": "bathroom" } },
+      { "category": "internal", "details": { "room_type": "stairway" } },
+      { "category": "internal", "details": { "room_type": "bathroom" } },
+      { "category": "external", "details": { "exterior_type": "front yard" } },
+      { "category": "internal", "details": { "room_type": "living room" } },
+      { "category": "external", "details": { "exterior_type": "front yard" } },
+      { "category": "internal", "details": { "room_type": "bedroom" } },
+      { "category": "internal", "details": { "room_type": "kitchen" } },
+      { "category": "internal", "details": { "room_type": "utility room" } },
+      { "category": "internal", "details": { "room_type": "kitchen" } },
+      { "category": "internal", "details": { "room_type": "dining room" } },
+      { "category": "internal", "details": { "room_type": "bedroom" } },
+      { "category": "internal", "details": { "room_type": "bedroom" } },
+      { "category": "internal", "details": { "room_type": "half bath" } },
+      { "category": "internal", "details": { "room_type": "kitchen" } },
+      { "category": "internal", "details": { "room_type": "kids' bedroom" } },
+      { "category": "internal", "details": { "room_type": "living room" } },
+      { "category": "internal", "details": { "room_type": "bathroom" } },
+      { "category": "external", "details": { "exterior_type": "back garden" } },
+      { "category": "internal", "details": { "room_type": "dining room" } },
+      { "category": "internal", "details": { "room_type": "bedroom" } },
+      { "category": "internal", "details": { "room_type": "bedroom" } }
+    ],
+    "grouped_images": {
+      "internal": {
+        "kitchen_space": [11, 12, 13, 18],
+        "living_space": [14, 20, 23, 1, 5, 8],
+        "bedroom_space": [15, 16, 19, 24, 25, 10],
+        "bathroom_space": [17, 4, 6, 21]
+      },
+      "external": {
+        "back_garden_space": [22, 2, 3],
+        "front_garden_space": [7, 9]
+      }
+    },
+    "merged_images": {
+      "internal_kitchen_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_1_IOGeXIy.jpg"
+      ],
+      "internal_living_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_2_jbV2Yx2.jpg",
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_3_mc4aP7t.jpg"
+      ],
+      "internal_bedroom_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_4_bN6zkoV.jpg",
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_5_qf5Sc5A.jpg"
+      ],
+      "internal_bathroom_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_6_R0ikx62.jpg"
+      ],
+      "external_back_garden_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_7_2YGg7wS.jpg"
+      ],
+      "external_front_garden_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_8_t58hiZK.jpg"
+      ]
+    },
+    "detailed_analysis": {
+      "internal_kitchen_space": [
+        {
+          "image_number": 1,
+          "condition_label": "excellent",
+          "reasoning": "The interior space is very modern and has high-end finishes. The furniture and decor are stylish and contemporary, reflecting a cohesive design with attention to detail. The space is clean and well-presented, similar to a show home."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "above_average",
+          "reasoning": "The space has good quality finishes and fixtures with a well-maintained and clean appearance. However, it lacks some of the high-end finishes and impeccable presentation seen in an excellent category."
+        },
+        {
+          "image_number": 3,
+          "condition_label": "excellent",
+          "reasoning": "The space features modern finishes and a cohesive design. The furniture is stylish and contemporary, and the space is presented impeccably, similar to a high-end show home."
+        },
+        {
+          "image_number": 4,
+          "condition_label": "excellent",
+          "reasoning": "This image also depicts a modern space with cohesive design and high-end finishes. The presentation and staging are impeccable, similar to a show home."
+        }
+      ],
+      "internal_living_space": [
+        {
+          "image_number": 1,
+          "condition_label": "excellent",
+          "reasoning": "The staircase area appears to be very well maintained with modern finishes and attractive design elements like the chandelier. The carpeting looks new and the overall presentation is impeccable with a cohesive color scheme."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "excellent",
+          "reasoning": "The living room is stylishly decorated with modern and high-end furniture. The room is bright, well-lit with natural light, and the decor is carefully curated to provide a cohesive and appealing design. There are desirable features such as a chandelier and coordinated cushions and decor, adding to the excellent presentation."
+        }
+      ],
+      "internal_bedroom_space": [
+        {
+          "image_number": 1,
+          "condition_label": "excellent",
+          "reasoning": "The room appears to be newly refurbished with high-end and modern finishes. Stylish and contemporary furniture is present, and the overall design is cohesive with attention to detail. It has an impeccable presentation, resembling a show home."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "excellent",
+          "reasoning": "This room also meets the excellent criteria with its newly refurbished appearance, modern and stylish furniture, cohesive design, and impeccable presentation. The cleanliness and overall staging are outstanding."
+        }
+      ],
+      "internal_bathroom_space": [
+        {
+          "image_number": 1,
+          "condition_label": "excellent",
+          "reasoning": "Image 1 features a modern and minimalist design with high-quality finishes and fixtures. The bathroom appears very well-maintained with stylish decor, similar to a show home setting. The presentation is impeccable."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "excellent",
+          "reasoning": "Image 2 also reflects high-end, modern finishes and fixtures. The decor and design are contemporary with attention to detail. The overall aesthetic and cleanliness align with the 'Excellent' example images, indicating a recently refurbished space."
+        },
+        {
+          "image_number": 3,
+          "condition_label": "excellent",
+          "reasoning": "Image 3 showcases high-quality finishes in a bright and airy environment. The space is well-laid out with attractive decor and modern amenities. The condition and presentation are exemplary, matching the 'Excellent' criteria."
+        },
+        {
+          "image_number": 4,
+          "condition_label": "excellent",
+          "reasoning": "Image 4 features a clean, well-maintained bathroom with high-quality fittings and finishes. The design is cohesive and appealing, with modern fixtures and thoughtful decor, encapsulating the 'Excellent' standard."
+        }
+      ],
+      "external_back_garden_space": [
+        {
+          "image_number": 1,
+          "condition_label": "excellent",
+          "reasoning": "The garden is very well-maintained with lush greenery, modern outdoor seating, and high-quality hardscaping. The overall design is cohesive and matches well with the home's architecture, meeting an impeccable presentation and staging criteria."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "above_average",
+          "reasoning": "The patio and garden area are well-kept with good quality hardscaping and maintained plants. However, it lacks some of the high-end finishes and design aspects necessary for an excellent rating."
+        },
+        {
+          "image_number": 3,
+          "condition_label": "above_average",
+          "reasoning": "This image presents a tidy and well-maintained space with good quality outdoor furniture and a practical design. While it is neat and appealing, it does not exhibit the high-end finishes or impeccable maintenance required for an excellent rating."
+        },
+        {
+          "image_number": 4,
+          "condition_label": "n/a",
+          "reasoning": "There is no image labeled as number 4 in the provided target images, so no categorization is possible."
+        }
+      ],
+      "external_front_garden_space": [
+        {
+          "image_number": 1,
+          "condition_label": "excellent",
+          "reasoning": "The exterior of the house is very well maintained with professional landscaping, clean and cohesive design that complements the house architecture. The driveway and walkway are in excellent condition, indicating top-notch upkeep."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "excellent",
+          "reasoning": "Similar to the first image, the exterior shows meticulous attention to detail with a pristine lawn, well-maintained plants, and high-quality hardscaping. The appearance is impeccable, matching the standards of an 'excellent' condition."
+        }
+      ]
+    },
+    "overall_condition": {
+      "overall_condition_label": "Excellent",
+      "average_score": 4.9,
+      "distribution": { "excellent": 0.9, "above average": 0.1 },
+      "condition_distribution": { "excellent": 90.0, "above average": 10.0 },
+      "areas_of_concern": 0,
+      "confidence": "Medium",
+      "explanation": "\nDetailed calculation of overall property condition:\n\n1. Total number of valid assessments: 20\n\n2. Condition counts:\n   - Excellent: 18\n   - Above average: 2\n\n3. Calculation of average score:\n   - Each condition is assigned a value: Excellent (5), Above Average (4), Average (3), Below Average (2), Poor (1)\n   - Total value: 98 (sum of all condition values)\n   - Average score: 98 / 20 = 4.90\n\n4. Distribution of conditions:\n   - Excellent: 90.00%\n   - Above average: 10.00%\n\n5. Areas of concern (conditions below average): 0\n\n6. Overall rating determination:\n   - Excellent: 4.5 and above\n   - Good: 3.5 to 4.49\n   - Average: 2.5 to 3.49\n   - Below Average: 1.5 to 2.49\n   - Poor: Below 1.5\n\n   Based on the average score of 4.90, the overall rating is: Excellent\n\n7. Confidence level:\n   - High: More than 20 assessments\n   - Medium: 11 to 20 assessments\n   - Low: 10 or fewer assessments\n\n   Based on 20 assessments, the confidence level is: Medium\n"
+    }
+  },
+  "Image_Analysis": {}
+}

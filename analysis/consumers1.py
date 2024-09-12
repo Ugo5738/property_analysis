@@ -10,19 +10,24 @@ logger = configure_logger(__name__)
 
 class AnalysisProgressConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.analysis_group_name = f"analysis_1"
+        self.user = self.scope["user"]
+        if self.user.is_authenticated:
+            self.analysis_group_name = f"analysis_{self.user.id}"
 
-        await self.channel_layer.group_add(
-            self.analysis_group_name,
-            self.channel_name
-        )
+            await self.channel_layer.group_add(
+                self.analysis_group_name,
+                self.channel_name
+            )
 
-        await self.accept()
-        self.session_data: Dict[str, Any] = {}
-        logger.info(f"WebSocket connected for group: {self.analysis_group_name}")
+            await self.accept()
+            self.session_data: Dict[str, Any] = {}
+            logger.info(f"WebSocket connected for user: {self.user.email}")
+        else:
+            logger.warning("Anonymous user, closing connection")
+            await self.close()
 
     async def disconnect(self, close_code):
-        logger.info(f"WebSocket disconnected. Close code: {close_code}")
+        logger.info(f"WebSocket disconnected for user: {self.user_id}. Close code: {close_code}")
 
         await self.channel_layer.group_discard(
             self.analysis_group_name,
@@ -33,7 +38,7 @@ class AnalysisProgressConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         message = data['message']
 
-        logger.info(f"=== MESSAGE RECEIVED ===")
+        logger.info(f"=== MESSAGE RECEIVED FROM USER: {self.user.email} ===")
 
         # Echo the message back to the WebSocket
         await self.send(text_data=json.dumps({
@@ -42,9 +47,5 @@ class AnalysisProgressConsumer(AsyncWebsocketConsumer):
 
     async def analysis_progress(self, event):
         message = event['message']
-        logger.info(f"Sending analysis progress: {message}")
 
-        await self.send(text_data=json.dumps({
-            'type': 'analysis_progress',
-            'message': message
-        }))
+        await self.send(text_data=json.dumps(message))

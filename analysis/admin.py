@@ -86,7 +86,7 @@ class MergedSampleImageAdmin(admin.ModelAdmin):
 
 @admin.register(AnalysisTask)
 class AnalysisTaskAdmin(admin.ModelAdmin):
-    list_display = ('property', 'status', 'progress', 'stage', 'created_at', 'updated_at')
+    list_display = ('id', 'property', 'status', 'progress', 'stage', 'created_at', 'updated_at')
     list_filter = ('status', 'stage', 'created_at', 'updated_at')
     search_fields = ('property__url', 'stage')
     readonly_fields = ('created_at', 'updated_at')

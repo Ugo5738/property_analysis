@@ -15,7 +15,7 @@ from analysis.serializers import (
     PropertyImageSerializer,
     PropertySerializer,
 )
-from analysis.tasks import analyze_property
+from analysis.tasks import analyze_property, clear_property_data
 from property_analysis.config.logging_config import configure_logger
 from utils.image_processing import get_image_urls
 
@@ -43,7 +43,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
         try:
             property_instance, created = Property.objects.get_or_create(url=url)
-
+            
+            # Clear existing data
+            clear_property_data(property_instance)
+        
             # Get and store image URLs
             image_urls = get_image_urls(url)
             property_instance.image_urls = image_urls
@@ -53,8 +56,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         task = AnalysisTask.objects.create(property=property_instance)
+        print("This is the task id: ", task.id)
         try:
-            analyze_property.delay(property_instance.id, task.id, request.user.id)
+            analyze_property.delay(property_instance.id, task.id, "1")  # request.user.id)
         except OperationalError as e:
             logger.error(f"Celery operational error: {str(e)}")
             return Response({'error': 'Task queueing failed. Please try again later.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -67,6 +71,28 @@ class PropertyViewSet(viewsets.ModelViewSet):
         task = property.analysis_tasks.latest('created_at')
         serializer = AnalysisTaskSerializer(task)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def results(self, request, pk=None):
+        task = get_object_or_404(AnalysisTask, id=pk)
+        property_instance = task.property
+        
+        if task.status != 'COMPLETED':
+            return Response({
+                'status': task.status,
+                'progress': task.progress,
+                'stage': task.stage,
+                'message': 'Analysis not yet complete'
+            }, status=status.HTTP_202_ACCEPTED)
+        
+        result = {
+            'property_url': property_instance.url,
+            'overall_condition': property_instance.overall_condition,
+            'detailed_analysis': property_instance.detailed_analysis,
+            'stages': json.loads(task.stage_progress) if task.stage_progress else {}
+        }
+        
+        return Response(result)
 
 
 class PropertyImageViewSet(viewsets.ModelViewSet):

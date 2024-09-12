@@ -1,0 +1,169 @@
+{
+  "property_url": "https://www.onthemarket.com/details/15710655/",
+  "stages": {
+    "initial_categorization": [
+      { "category": "internal", "details": { "room_type": "bathroom" } },
+      {
+        "category": "external",
+        "details": { "exterior_type": "neighborhood" }
+      },
+      { "category": "external", "details": { "exterior_type": "walkway" } },
+      { "category": "external", "details": { "exterior_type": "patio" } },
+      { "category": "external", "details": { "exterior_type": "others" } },
+      { "category": "internal", "details": { "room_type": "bedroom" } },
+      { "category": "external", "details": { "exterior_type": "others" } },
+      { "category": "internal", "details": { "room_type": "living room" } },
+      { "category": "internal", "details": { "room_type": "kitchen" } },
+      { "category": "internal", "details": { "room_type": "dining room" } },
+      { "category": "internal", "details": { "room_type": "kids' bedroom" } },
+      { "category": "internal", "details": { "room_type": "bedroom" } },
+      { "category": "internal", "details": { "room_type": "dining room" } },
+      { "category": "external", "details": { "exterior_type": "patio" } },
+      { "category": "internal", "details": { "room_type": "bathroom" } }
+    ],
+    "grouped_images": {
+      "external": {
+        "front_garden_space": [32, 27, 28, 30],
+        "back_garden_space": [39, 29]
+      },
+      "internal": {
+        "living_space": [33, 35, 38],
+        "kitchen_space": [34],
+        "bedroom_space": [36, 37, 31],
+        "bathroom_space": [40, 26]
+      }
+    },
+    "merged_images": {
+      "external_front_garden_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_9_YDxF9bv.jpg"
+      ],
+      "internal_living_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_10_Ndx7Iel.jpg"
+      ],
+      "internal_kitchen_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_11_jC2f7DR.jpg"
+      ],
+      "internal_bedroom_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_12_T9XbOVT.jpg"
+      ],
+      "external_back_garden_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_13_1nzgtn7.jpg"
+      ],
+      "internal_bathroom_space": [
+        "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_14_G4Ig1ib.jpg"
+      ]
+    },
+    "detailed_analysis": {
+      "external_front_garden_space": [
+        {
+          "image_number": 1,
+          "condition_label": "poor",
+          "reasoning": "Image 1 shows an exterior space with overgrown vegetation, visible signs of neglect, and damaged or absent hardscaping elements. The overall appearance seems cluttered and poorly maintained, fitting the characteristics of a 'Poor' condition."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "below average",
+          "reasoning": "Image 2 showcases a front exterior with dated finishes, limited variety of plants, some of which may appear unhealthy, and an absence of high-quality hardscaping. There is some effort at maintenance, but it lacks a cohesive design, fitting a 'Below Average' condition."
+        },
+        {
+          "image_number": 3,
+          "condition_label": "below average",
+          "reasoning": "Image 3 shows a garden space with limited plant variety, a relatively basic layout, and visible signs of minimal maintenance. The lawn appears patchy, and the hardscaping is basic, categorizing this as 'Below Average.'"
+        },
+        {
+          "image_number": 4,
+          "condition_label": "poor",
+          "reasoning": "Image 4 depicts an exterior with very outdated and worn finishes, visible damage or disrepair, and an unkempt appearance. The minimal upkeep and lack of a cohesive design plan contribute to a 'Poor' categorization."
+        }
+      ],
+      "internal_living_space": [
+        {
+          "image_number": 1,
+          "condition_label": "above_average",
+          "reasoning": "The space is well-maintained with modern furniture and decor. The finishes and fixtures appear to be of good quality, and the room is clean and well-presented overall."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "above_average",
+          "reasoning": "The room has an attractive and cohesive design, good furniture, and is well-maintained. The open, well-lit layout also enhances its appeal."
+        },
+        {
+          "image_number": 3,
+          "condition_label": "above_average",
+          "reasoning": "The kitchen and dining area have good quality finishes and fixtures. The space is tidy, and well-organized with a cohesive color scheme, contributing to an above average presentation."
+        }
+      ],
+      "internal_kitchen_space": [
+        {
+          "image_number": 1,
+          "condition_label": "above average",
+          "reasoning": "The kitchen in the image is well-maintained with modern fixtures and finishes. It exhibits a cohesive design with similar-colored cabinets and counters. The space is clean and organized, displaying some personal items, which slightly detracts from the 'excellent' category but aligns well with 'above average'."
+        }
+      ],
+      "internal_bedroom_space": [
+        {
+          "image_number": 1,
+          "condition_label": "above average",
+          "reasoning": "The room is well-maintained with attractive furniture and a cohesive design scheme. There are a variety of decorative elements such as the wall art and plants, and the room appears clean and tidy."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "above average",
+          "reasoning": "Similarly, this room has good quality finishes and a pleasant, cohesive design. The furniture is attractive and well-arranged, contributing to a clean and welcoming appearance."
+        },
+        {
+          "image_number": 3,
+          "condition_label": "above average",
+          "reasoning": "The room features modern furniture and decor, along with a cohesive design scheme. The space is clean and well-maintained, with sufficient natural light and a tidy overall appearance."
+        },
+        {
+          "image_number": 4,
+          "condition_label": "above average",
+          "reasoning": "The room exhibits good quality fixtures and a cohesive design. The furniture and decor are well-maintained and aesthetically pleasing, with no signs of wear or clutter, maintaining a tidy appearance."
+        }
+      ],
+      "external_back_garden_space": [
+        {
+          "image_number": 1,
+          "condition_label": "above average",
+          "reasoning": "The space is well-maintained and clean, with a variety of healthy plants and tidy furnishings. The patio furniture is in good condition, and the overall appearance is inviting, but does not exhibit the level of detail and high-end finishes that would elevate it to the Excellent category."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "below average",
+          "reasoning": "The area appears somewhat cluttered with a variety of plants that lack a cohesive design. The overall maintenance is not as polished, with visible signs of wear. The space lacks the neatness and organization found in Above Average spaces."
+        }
+      ],
+      "internal_bathroom_space": [
+        {
+          "image_number": 1,
+          "condition_label": "below average",
+          "reasoning": "The bathroom has worn finishes and dated fixtures, showing signs of use and lack of updates, which places it in the Below Average category. The overall layout is cramped, and there is limited attention to the design details."
+        },
+        {
+          "image_number": 2,
+          "condition_label": "above average",
+          "reasoning": "This bathroom has good quality fixtures and finishes, a clean and cohesive design, and well-presented decor. There is a pleasant aesthetic and attention to detail in the tile work and layout."
+        }
+      ]
+    },
+    "overall_condition": {
+      "overall_condition_label": "Average",
+      "average_score": 2.92,
+      "distribution": {
+        "below average": 0.3076923076923077,
+        "above average": 0.5384615384615384,
+        "poor": 0.15384615384615385
+      },
+      "condition_distribution": {
+        "below average": 30.76923076923077,
+        "above average": 53.84615384615385,
+        "poor": 15.384615384615385
+      },
+      "areas_of_concern": 6,
+      "confidence": "Medium",
+      "explanation": "\nDetailed calculation of overall property condition:\n\n1. Total number of valid assessments: 13\n\n2. Condition counts:\n   - Below average: 4\n   - Above average: 7\n   - Poor: 2\n\n3. Calculation of average score:\n   - Each condition is assigned a value: Excellent (5), Above Average (4), Average (3), Below Average (2), Poor (1)\n   - Total value: 38 (sum of all condition values)\n   - Average score: 38 / 13 = 2.92\n\n4. Distribution of conditions:\n   - Below average: 30.77%\n   - Above average: 53.85%\n   - Poor: 15.38%\n\n5. Areas of concern (conditions below average): 6\n\n6. Overall rating determination:\n   - Excellent: 4.5 and above\n   - Good: 3.5 to 4.49\n   - Average: 2.5 to 3.49\n   - Below Average: 1.5 to 2.49\n   - Poor: Below 1.5\n\n   Based on the average score of 2.92, the overall rating is: Average\n\n7. Confidence level:\n   - High: More than 20 assessments\n   - Medium: 11 to 20 assessments\n   - Low: 10 or fewer assessments\n\n   Based on 13 assessments, the confidence level is: Medium\n"
+    }
+  },
+  "Image_Analysis": {}
+}
