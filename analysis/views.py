@@ -87,9 +87,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
         
         result = {
             'property_url': property_instance.url,
-            'overall_condition': property_instance.overall_condition,
-            'detailed_analysis': property_instance.detailed_analysis,
-            'stages': json.loads(task.stage_progress) if task.stage_progress else {}
+            'overall_analysis': property_instance.overall_analysis,
+            # 'detailed_analysis': property_instance.detailed_analysis,
+            'stages': task.stage_progress or {}
         }
         
         return Response(result)

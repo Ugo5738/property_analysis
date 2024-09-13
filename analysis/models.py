@@ -12,7 +12,7 @@ class Property(models.Model):
     detailed_analysis = models.JSONField(null=True, blank=True)
     failed_downloads = models.JSONField(default=list)
     image_urls = models.JSONField(default=list)
-    # image_urls = ArrayField(models.URLField(), default=list)
+    overall_analysis = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

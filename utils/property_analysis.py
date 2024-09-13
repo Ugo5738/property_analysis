@@ -78,6 +78,7 @@ async def process_property(property_url, image_ids, update_progress):
             'Property URL': property_url,
             'Condition': property_condition,
             'Detailed Analysis': results['stages']['detailed_analysis'],
+            'Overall Analysis': results,
             'Analysis Stages': results['stages']
         }
 

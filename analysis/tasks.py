@@ -47,6 +47,7 @@ async def analyze_property_async(property_id, task_id, user_id):
         # Update property with results
         property_instance.overall_condition = result['Condition']
         property_instance.detailed_analysis = result['Detailed Analysis']
+        property_instance.overall_analysis = result['Overall Analysis']
         await property_instance.asave()
 
         task_instance.status = 'COMPLETED'
