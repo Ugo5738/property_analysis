@@ -29,41 +29,41 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get', 'post'])
     def analyze(self, request):
         url = request.data.get('url')
+        property_id = request.data.get('property_id')
 
-        if not url:
-            return Response({'error': 'URL is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if request.method == 'GET':
-            url = request.query_params.get('url')
-            property_instance = Property.objects.filter(url=url).first()
-            if property_instance:
-                serializer = self.get_serializer(property_instance)
-                return Response(serializer.data)
-            return Response({'detail': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        try:
-            property_instance, created = Property.objects.get_or_create(url=url)
-            
-            # Clear existing data
-            clear_property_data(property_instance)
+        if not url and not property_id:
+            return Response({'error': 'URL or property_id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
-            # Get and store image URLs
+        if property_id:
+            try:
+                property_instance = Property.objects.get(id=property_id)
+                url = property_instance.url
+            except Property.DoesNotExist:
+                return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            property_instance, created = Property.objects.get_or_create(url=url)
+
+        # Clear existing data
+        clear_property_data(property_instance)
+        
+        # Get and store image URLs
+        try:
             image_urls = get_image_urls(url)
             property_instance.image_urls = image_urls
             property_instance.save()
-
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         task = AnalysisTask.objects.create(property=property_instance)
         print("This is the task id: ", task.id)
+
         try:
-            analyze_property.delay(property_instance.id, task.id, "1")  # request.user.id)
+            analyze_property.delay(property_instance.id, task.id, "1")  # Use request.user.id if authentication is implemented
         except OperationalError as e:
             logger.error(f"Celery operational error: {str(e)}")
             return Response({'error': 'Task queueing failed. Please try again later.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
+        return Response({'task_id': task.id, 'property_id': property_instance.id}, status=status.HTTP_202_ACCEPTED)
 
     @action(detail=True, methods=['get'])
     def analysis_status(self, request, pk=None):
@@ -94,6 +94,12 @@ class PropertyViewSet(viewsets.ModelViewSet):
         
         return Response(result)
 
+    @action(detail=False, methods=['get'])
+    def list_properties(self, request):
+        properties = Property.objects.all().order_by('-created_at')
+        serializer = self.get_serializer(properties, many=True)
+        return Response(serializer.data)
+    
 
 class PropertyImageViewSet(viewsets.ModelViewSet):
     queryset = PropertyImage.objects.all()
