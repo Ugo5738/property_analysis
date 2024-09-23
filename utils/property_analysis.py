@@ -12,6 +12,7 @@ from analysis.models import (
     Property,
     PropertyImage,
 )
+from property_analysis.config.logging_config import configure_logger
 from utils.image_processing import merge_images
 from utils.openai_analysis import (
     analyze_single_image,
@@ -19,6 +20,8 @@ from utils.openai_analysis import (
     update_prompt_json_file,
 )
 from utils.prompts import categorize_prompt, labelling_prompt, spaces
+
+logger = configure_logger(__name__)
 
 
 async def process_property(property_url, image_ids, update_progress):
@@ -32,9 +35,9 @@ async def process_property(property_url, image_ids, update_progress):
             "grouped_images": {},
             "merged_images": {},
             "detailed_analysis": {},
-            "overall_condition": {}
+            "overall_condition": {},
         },
-        "Image_Analysis": {}
+        "Image_Analysis": {},
     }
 
     property_instance = await sync_to_async(Property.objects.get)(url=property_url)
@@ -47,61 +50,73 @@ async def process_property(property_url, image_ids, update_progress):
     try:
         # Step 1: Initial categorization
         step = 1
-        await update_step_progress('categorization', 'Categorizing images', 0)
-        await categorize_images(property_instance, image_ids, results, update_step_progress)
+        await update_step_progress("categorization", "Categorizing images", 0)
+        await categorize_images(
+            property_instance, image_ids, results, update_step_progress
+        )
 
         # Step 2: Grouping images
         step = 2
-        await update_step_progress('grouping', 'Grouping images by category', 0)
+        await update_step_progress("grouping", "Grouping images by category", 0)
         await group_images(property_instance, results, update_step_progress)
 
         # Step 3: Merging images
         step = 3
-        await update_step_progress('merging', 'Merging grouped images', 0)
+        await update_step_progress("merging", "Merging grouped images", 0)
         await merge_grouped_images(property_instance, results, update_step_progress)
 
         # Step 4: Detailed analysis
         step = 4
-        await update_step_progress('analysis', 'Analyzing merged images', 0)
-        all_condition_ratings = await analyze_merged_images(property_instance, results, update_step_progress)
+        await update_step_progress("analysis", "Analyzing merged images", 0)
+        all_condition_ratings = await analyze_merged_images(
+            property_instance, results, update_step_progress
+        )
 
         # Step 5: Overall condition calculation
         step = 5
-        await update_step_progress('overall_analysis', 'Calculating overall property condition', 0)
+        await update_step_progress(
+            "overall_analysis", "Calculating overall property condition", 0
+        )
         property_condition = analyze_property_condition(all_condition_ratings)
-        results['stages']['overall_condition'] = property_condition
-        print(f"This is the final results: {results}")
-        await update_step_progress('overall_analysis', 'Finished calculating overall condition', 1)
+        results["stages"]["overall_condition"] = property_condition
+        logger.info(f"This is the final results: {results}")
+        await update_step_progress(
+            "overall_analysis", "Finished calculating overall condition", 1
+        )
 
         # Final result compilation
         final_result = {
-            'Property URL': property_url,
-            'Condition': property_condition,
-            'Detailed Analysis': results['stages']['detailed_analysis'],
-            'Overall Analysis': results,
-            'Analysis Stages': results['stages']
+            "Property URL": property_url,
+            "Condition": property_condition,
+            "Detailed Analysis": results["stages"]["detailed_analysis"],
+            "Overall Analysis": results,
+            "Analysis Stages": results["stages"],
         }
 
         return final_result
 
     except Exception as e:
         error_message = f"Error during analysis: {str(e)}"
-        print(error_message)
+        logger.error(error_message)
         import traceback
+
         traceback.print_exc()
-        await update_progress('error', error_message, 0.0)
+        await update_progress("error", error_message, 0.0)
         return {"error": error_message}
 
-async def categorize_images(property_instance, image_ids, results, update_step_progress):
+
+async def categorize_images(
+    property_instance, image_ids, results, update_step_progress
+):
     total_batches = (len(image_ids) + 3) // 4  # Round up division
     for batch_num, i in enumerate(range(0, len(image_ids), 4), 1):
-        batch = image_ids[i:i+4]
+        batch = image_ids[i : i + 4]
         if not batch:
             continue
 
         images = await sync_to_async(list)(PropertyImage.objects.filter(id__in=batch))
         merged_image = await merge_images(images)
-        base64_encoded = base64.b64encode(merged_image).decode('utf-8')
+        base64_encoded = base64.b64encode(merged_image).decode("utf-8")
         # base64_encoded = f"data:image/png;base64,{base64_encoded}"
         base64_image = f"data:image/jpeg;base64,{base64_encoded}"
 
@@ -110,155 +125,218 @@ async def categorize_images(property_instance, image_ids, results, update_step_p
 
         if category_result:
             result = json.loads(category_result)
-            print(f"This is the result: {result}")
+            logger.info(f"This is the result: {result}")
 
             await update_prompt_json_file(spaces, result)
-            print("Finished updating json file")
+            logger.info("Finished updating json file")
 
             for index, image_id in enumerate(batch):
-                if index < len(result.get('images', [])):
-                    img_result = result['images'][index]
+                if index < len(result.get("images", [])):
+                    img_result = result["images"][index]
                     await update_property_image_category(image_id, img_result)
-                    results['stages']['initial_categorization'].append(img_result)
+                    results["stages"]["initial_categorization"].append(img_result)
                 else:
-                    print(f"No result for image at index {index}")
+                    logger.info(f"No result for image at index {index}")
 
-        await update_step_progress('categorization', f'Categorized batch {batch_num}/{total_batches}', (batch_num)/total_batches)
+        await update_step_progress(
+            "categorization",
+            f"Categorized batch {batch_num}/{total_batches}",
+            (batch_num) / total_batches,
+        )
+
+
+def standardize_condition_label(label: str) -> str:
+    """
+    Standardizes the condition label to match predefined labels.
+    """
+    label = label.strip().lower().replace("_", " ").replace("-", " ")
+    mapping = {
+        "excellent": "Excellent",
+        "above average": "Above Average",
+        "average": "Average",
+        "below average": "Below Average",
+        "poor": "Poor",
+    }
+    return mapping.get(label, "Average")
 
 
 async def update_property_image_category(image_id, category_info):
     property_image = await PropertyImage.objects.aget(id=image_id)
-    property_image.main_category = category_info.get('category', '')
-    details = category_info.get('details', {})
+    property_image.main_category = category_info.get("category", "")
+    details = category_info.get("details", {})
 
     # Load the data.json content
-    with open('utils/data.json', 'r') as f:
+    with open("utils/data.json", "r") as f:
         data_json = json.load(f)
 
     # Determine sub_category and space_type
-    if property_image.main_category == 'internal':
-        sub_category = details.get('room_type', '')
+    if property_image.main_category == "internal":
+        sub_category = details.get("room_type", "")
         space_type = sub_category
-    elif property_image.main_category == 'external':
-        sub_category = details.get('exterior_type', '')
+    elif property_image.main_category == "external":
+        sub_category = details.get("exterior_type", "")
         space_type = sub_category
     else:
-        sub_category = details.get('others', '')
+        sub_category = details.get("others", "")
         space_type = sub_category
 
     # Find the matching subcategory in data.json
-    mapped_sub_category = 'others'
+    mapped_sub_category = "others"
     for key, values in data_json.items():
         if sub_category.lower() in [v.lower() for v in values]:
             mapped_sub_category = key
             break
 
     property_image.sub_category = mapped_sub_category
-    property_image.room_type = space_type  # change room_type to space_type in the database
+    property_image.room_type = (
+        space_type  # change room_type to space_type in the database
+    )
     await property_image.asave()
+
+    # Logging for debugging
+    logger.info(
+        f"Image ID {image_id} categorized as {property_image.main_category} - {property_image.sub_category}"
+    )
 
 
 async def group_images(property_instance, results, update_step_progress):
     try:
-        print(f"Starting grouping images for property: {property_instance.url}")
-        images = await sync_to_async(list)(PropertyImage.objects.filter(property=property_instance))
-        print(f"Total images found: {len(images)}")
+        logger.info(f"Starting grouping images for property: {property_instance.url}")
+        images = await sync_to_async(list)(
+            PropertyImage.objects.filter(property=property_instance)
+        )
+        logger.info(f"Total images found: {len(images)}")
 
         for image in images:
             try:
-                print(f"Processing image: {image.id} - Main category: {image.main_category}, Sub category: {image.sub_category}")                
+                logger.info(
+                    f"Processing image: {image.id} - Main category: {image.main_category}, Sub category: {image.sub_category}"
+                )
                 group, created = await GroupedImages.objects.aget_or_create(
                     property=property_instance,
                     main_category=image.main_category,
-                    sub_category=image.sub_category
+                    sub_category=image.sub_category,
                 )
                 await group.images.aadd(image)
 
                 if created:
-                    print(f"Created new group: {image.main_category} - {image.sub_category}")
-                    results['stages']['grouped_images'].setdefault(image.main_category, {})[image.sub_category] = []
-                
-                results['stages']['grouped_images'][image.main_category][image.sub_category].append(image.id)
-                print(f"Added image {image.id} to group {image.main_category} - {image.sub_category}")
-            
+                    logger.info(
+                        f"Created new group: {image.main_category} - {image.sub_category}"
+                    )
+                    results["stages"]["grouped_images"].setdefault(
+                        image.main_category, {}
+                    )[image.sub_category] = []
+
+                results["stages"]["grouped_images"][image.main_category][
+                    image.sub_category
+                ].append(image.id)
+                logger.info(
+                    f"Added image {image.id} to group {image.main_category} - {image.sub_category}"
+                )
+
             except Exception as e:
-                print(f"Error processing image {image.id}: {str(e)}")
+                logger.error(f"Error processing image {image.id}: {str(e)}")
                 import traceback
+
                 traceback.print_exc()
 
-        print("Finished grouping all images")
-        await update_step_progress('grouping', 'Finished grouping images', 1)
+        logger.info("Finished grouping all images")
+        await update_step_progress("grouping", "Finished grouping images", 1)
 
     except Exception as e:
-        print(f"Error in group_images function: {str(e)}")
+        logger.error(f"Error in group_images function: {str(e)}")
         import traceback
+
         traceback.print_exc()
         raise  # Re-raise the exception to be caught by the calling function
 
-    print("Group images results:")
-    print(json.dumps(results['stages']['grouped_images'], indent=2))
-    
+    logger.info("Group images results:")
+    logger.info(json.dumps(results["stages"]["grouped_images"], indent=2))
+
 
 async def merge_grouped_images(property_instance, results, update_step_progress):
     try:
-        print(f"Starting merging grouped images for property: {property_instance.url}")
-        grouped_images = await sync_to_async(list)(GroupedImages.objects.filter(property=property_instance))
+        logger.info(
+            f"Starting merging grouped images for property: {property_instance.url}"
+        )
+        grouped_images = await sync_to_async(list)(
+            GroupedImages.objects.filter(property=property_instance)
+        )
         total_groups = len(grouped_images)
-        print(f"Total grouped images: {total_groups}")
+        logger.info(f"Total grouped images: {total_groups}")
 
         for idx, group in enumerate(grouped_images):
             try:
-                print(f"Processing group: {group.id} - {group.main_category} - {group.sub_category}")
+                logger.info(
+                    f"Processing group: {group.id} - {group.main_category} - {group.sub_category}"
+                )
                 images = await sync_to_async(list)(group.images.all())
-                print(f"Images in group: {len(images)}")
+                logger.info(f"Images in group: {len(images)}")
 
                 # Split into subgroups of 4 if there are more than 4 images
-                subgroups = [images[i:i+4] for i in range(0, len(images), 4)]
+                subgroups = [images[i : i + 4] for i in range(0, len(images), 4)]
 
                 for subgroup_idx, subgroup in enumerate(subgroups):
                     try:
-                        print(f"Merging subgroup {subgroup_idx + 1} of {len(subgroups)}")
+                        logger.info(
+                            f"Merging subgroup {subgroup_idx + 1} of {len(subgroups)}"
+                        )
                         merged_image = await merge_images(subgroup)
 
-                        merged_property_image = await MergedPropertyImage.objects.acreate(
-                            property=property_instance,
-                            main_category=group.main_category,
-                            sub_category=group.sub_category
+                        merged_property_image = (
+                            await MergedPropertyImage.objects.acreate(
+                                property=property_instance,
+                                main_category=group.main_category,
+                                sub_category=group.sub_category,
+                            )
                         )
                         filename = f"merged_image_{merged_property_image.id}.jpg"
-                        await sync_to_async(merged_property_image.image.save)(filename, ContentFile(merged_image), save=True)
-
-                        results['stages']['merged_images'].setdefault(f"{group.main_category}_{group.sub_category}", []).append(
-                            merged_property_image.image.url
+                        await sync_to_async(merged_property_image.image.save)(
+                            filename, ContentFile(merged_image), save=True
                         )
-                        print(f"Created merged image: {merged_property_image.id}")
+
+                        results["stages"]["merged_images"].setdefault(
+                            f"{group.main_category}_{group.sub_category}", []
+                        ).append(merged_property_image.image.url)
+                        logger.info(f"Created merged image: {merged_property_image.id}")
 
                     except Exception as e:
-                        print(f"Error merging subgroup {subgroup_idx + 1}: {str(e)}")
+                        logger.error(
+                            f"Error merging subgroup {subgroup_idx + 1}: {str(e)}"
+                        )
                         import traceback
+
                         traceback.print_exc()
 
             except Exception as e:
-                print(f"Error processing group {group.id}: {str(e)}")
+                logger.error(f"Error processing group {group.id}: {str(e)}")
                 import traceback
+
                 traceback.print_exc()
 
-            await update_step_progress('merging', f'Merged group {idx+1}/{total_groups}', (idx+1)/total_groups)
+            await update_step_progress(
+                "merging",
+                f"Merged group {idx+1}/{total_groups}",
+                (idx + 1) / total_groups,
+            )
 
-        print("Finished merging all grouped images")
+        logger.info("Finished merging all grouped images")
 
     except Exception as e:
-        print(f"Error in merge_grouped_images function: {str(e)}")
+        logger.error(f"Error in merge_grouped_images function: {str(e)}")
         import traceback
+
         traceback.print_exc()
         raise  # Re-raise the exception to be caught by the calling function
 
-    print("Merged images results:")
-    print(json.dumps(results['stages']['merged_images'], indent=2))
-    
+    logger.info("Merged images results:")
+    logger.info(json.dumps(results["stages"]["merged_images"], indent=2))
+
 
 async def analyze_merged_images(property_instance, results, update_step_progress):
-    merged_images = await sync_to_async(list)(MergedPropertyImage.objects.filter(property=property_instance))
+    merged_images = await sync_to_async(list)(
+        MergedPropertyImage.objects.filter(property=property_instance)
+    )
     total_analyses = len(merged_images)
     all_condition_ratings = []
 
@@ -266,7 +344,7 @@ async def analyze_merged_images(property_instance, results, update_step_progress
         sample_images = await sync_to_async(list)(
             MergedSampleImage.objects.filter(
                 category=merged_image.main_category,
-                subcategory=merged_image.sub_category
+                subcategory=merged_image.sub_category,
             )
         )
 
@@ -274,51 +352,61 @@ async def analyze_merged_images(property_instance, results, update_step_progress
         sample_images_dict = {}
         for item in sample_images:
             encoded_image = encode_image(item.image)
-            sample_images_dict[item.condition] = f"data:image/jpeg;base64,{encoded_image}"
+            sample_images_dict[item.condition] = (
+                f"data:image/jpeg;base64,{encoded_image}"
+            )
 
         if not sample_images_dict:
             continue
 
         conditions = list(sample_images_dict.keys())
-        full_prompt = (f"{labelling_prompt}\n\nSample images are provided for the following conditions: {', '.join(conditions)}. "
-                       f"The target images (2x2 grid) follow these sample images.")
+        full_prompt = (
+            f"{labelling_prompt}\n\nSample images are provided for the following conditions: {', '.join(conditions)}. "
+            f"The target images (2x2 grid) follow these sample images."
+        )
 
         # Encode the merged image
         encoded_merged_image = encode_image(merged_image.image)
         base64_merged_image = f"data:image/jpeg;base64,{encoded_merged_image}"
 
         try:
-            structured_output = await analyze_single_image(full_prompt, base64_merged_image, sample_images_dict)
+            structured_output = await analyze_single_image(
+                full_prompt, base64_merged_image, sample_images_dict
+            )
             if "error" in structured_output:
-                print(f"Error in analyze_single_image: {structured_output['error']}")
+                logger.info(
+                    f"Error in analyze_single_image: {structured_output['error']}"
+                )
                 continue
             result = structured_output["response_content"]
+            print("This is the result I want to check: ", result)
         except Exception as e:
-            print(f"Exception in analyze_single_image: {str(e)}")
+            logger.error(f"Exception in analyze_single_image: {str(e)}")
             continue
 
         if result:
             try:
                 parsed_result = json.loads(result)
-                image_analyses = parsed_result.get('images', [])
+                image_analyses = parsed_result.get("images", [])
 
                 processed_analyses = []
                 group_images = await sync_to_async(list)(
                     PropertyImage.objects.filter(
                         property=property_instance,
                         main_category=merged_image.main_category,
-                        sub_category=merged_image.sub_category
+                        sub_category=merged_image.sub_category,
                     )
                 )
                 for analysis, img in zip(image_analyses, group_images):
-                    condition_label = analysis.get("condition", "Unknown").lower()
+                    condition_label_raw = analysis.get("condition", "Average")
+                    condition_label = standardize_condition_label(condition_label_raw)
                     all_condition_ratings.append(condition_label)
                     processed_analysis = {
                         "image_number": analysis.get("image_tag_number", "Unknown"),
                         "condition_label": condition_label,
                         "reasoning": analysis.get("reasoning", "No reasoning provided"),
                         "image_url": img.image.url if img.image else None,
-                        "image_id": img.id
+                        "image_id": img.id,
                     }
                     processed_analyses.append(processed_analysis)
 
@@ -327,27 +415,68 @@ async def analyze_merged_images(property_instance, results, update_step_progress
                     img.reasoning = analysis.get("reasoning", "No reasoning provided")
                     await img.asave()
 
-                results['stages']['detailed_analysis'][f"{merged_image.main_category}_{merged_image.sub_category}"] = processed_analyses
+                # Use setdefault and extend to accumulate analyses
+                results["stages"]["detailed_analysis"].setdefault(
+                    f"{merged_image.main_category}_{merged_image.sub_category}", []
+                ).extend(processed_analyses)
 
             except json.JSONDecodeError:
-                print(f"Error decoding JSON for {merged_image.main_category}_{merged_image.sub_category}: {result}")
+                logger.error(
+                    f"Error decoding JSON for {merged_image.main_category}_{merged_image.sub_category}: {result}"
+                )
 
-        await update_step_progress('analysis', f'Analyzed group {idx+1}/{total_analyses}', (idx+1)/total_analyses)
+        await update_step_progress(
+            "analysis",
+            f"Analyzed group {idx+1}/{total_analyses}",
+            (idx + 1) / total_analyses,
+        )
     return all_condition_ratings
 
 
 def analyze_property_condition(conditions):
-    condition_values = {"excellent": 5, "above average": 4, "average": 3, "below average": 2, "poor": 1}
-    valid_conditions = [c.lower() for c in conditions if c.lower() in condition_values]
+    # Standardized condition labels
+    condition_values = {
+        "Excellent": 5,
+        "Above Average": 4,
+        "Average": 3,
+        "Below Average": 2,
+        "Poor": 1,
+    }
+    # Map any variations to standardized labels
+    standardized_conditions = []
+    invalid_conditions = []
+
+    for c in conditions:
+        standardized = None
+        c_lower = c.lower().replace("_", " ").replace("-", " ")
+        for standard_label in condition_values.keys():
+            if c_lower == standard_label.lower():
+                standardized = standard_label
+                break
+        if standardized:
+            standardized_conditions.append(standardized)
+        else:
+            invalid_conditions.append(c)
+
+    valid_conditions = [c for c in standardized_conditions if c in condition_values]
+
+    # Logging invalid conditions
+    if invalid_conditions:
+        logger.warning(
+            f"Invalid or unrecognized condition labels: {invalid_conditions}"
+        )
 
     if not valid_conditions:
         return "Insufficient data"
 
+    # Proceed with the calculation using standardized_conditions
     total_value = sum(condition_values[c] for c in valid_conditions)
     average_value = total_value / len(valid_conditions)
 
     condition_counts = {c: valid_conditions.count(c) for c in set(valid_conditions)}
-    distribution = {c: count / len(valid_conditions) for c, count in condition_counts.items()}
+    distribution = {
+        c: count / len(valid_conditions) for c, count in condition_counts.items()
+    }
 
     below_average_count = sum(1 for c in valid_conditions if condition_values[c] < 3)
 
@@ -362,7 +491,10 @@ def analyze_property_condition(conditions):
     else:
         rating = "Poor"
 
-    condition_percentages = {c: (count / len(valid_conditions)) * 100 for c, count in condition_counts.items()}
+    condition_percentages = {
+        c: (count / len(valid_conditions)) * 100
+        for c, count in condition_counts.items()
+    }
 
     result = {
         "overall_condition_label": rating,
@@ -370,16 +502,21 @@ def analyze_property_condition(conditions):
         "distribution": distribution,
         "condition_distribution": condition_percentages,
         "areas_of_concern": below_average_count,
-        "confidence": "High" if len(valid_conditions) > 20 else "Medium" if len(valid_conditions) > 10 else "Low"
+        "confidence": (
+            "High"
+            if len(valid_conditions) > 20
+            else "Medium" if len(valid_conditions) > 10 else "Low"
+        ),
     }
 
+    # Detailed explanation remains unchanged
     explanation = f"""
 Detailed calculation of overall property condition:
 
 1. Total number of valid assessments: {len(valid_conditions)}
 
 2. Condition counts:
-{chr(10).join(f"   - {cond.capitalize()}: {count}" for cond, count in condition_counts.items())}
+{chr(10).join(f"   - {cond}: {count}" for cond, count in condition_counts.items())}
 
 3. Calculation of average score:
    - Each condition is assigned a value: Excellent (5), Above Average (4), Average (3), Below Average (2), Poor (1)
@@ -387,7 +524,7 @@ Detailed calculation of overall property condition:
    - Average score: {total_value} / {len(valid_conditions)} = {average_value:.2f}
 
 4. Distribution of conditions:
-{chr(10).join(f"   - {cond.capitalize()}: {dist:.2%}" for cond, dist in distribution.items())}
+{chr(10).join(f"   - {cond}: {dist:.2%}" for cond, dist in distribution.items())}
 
 5. Areas of concern (conditions below average): {below_average_count}
 
@@ -410,3 +547,7 @@ Detailed calculation of overall property condition:
 
     result["explanation"] = explanation
     return result
+
+
+# https://www.onthemarket.com/details/14989469/
+# https://www.onthemarket.com/details/15810660/

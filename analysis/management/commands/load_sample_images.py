@@ -8,12 +8,27 @@ from django.db.models import Count
 
 from analysis.models import MergedSampleImage, SampleImage
 from utils.image_processing import merge_images
+import hashlib
+
+
+def compute_image_hash(image_path):
+    hasher = hashlib.md5()
+    with open(image_path, 'rb') as img_file:
+        buf = img_file.read()
+        hasher.update(buf)
+    return hasher.hexdigest()
 
 
 class Command(BaseCommand):
     help = 'Load sample images from the categories folder into the database and create merged images'
 
     def handle(self, *args, **options):
+        SampleImage.objects.all().delete()
+        MergedSampleImage.objects.all().delete()
+        self.stdout.write(self.style.WARNING(
+            f'Sample images and Merged Sample image deleted'
+        ))
+        
         base_path = 'utils/categories'
 
         for category in ['external', 'internal']:
@@ -30,26 +45,23 @@ class Command(BaseCommand):
                                 image_path = os.path.join(condition_path, image_filename)
                                 if os.path.exists(image_path):
                                     with open(image_path, 'rb') as img_file:
-                                        # Check if an image with the same file name already exists
-                                        existing_image = SampleImage.objects.filter(
-                                            category=category,
-                                            subcategory=subcategory,
-                                            condition=condition,
-                                            image__endswith=image_filename
-                                        ).first()
+                                        image_hash = compute_image_hash(image_path)
+                                        existing_image = SampleImage.objects.filter(image_hash=image_hash).first()
 
                                         if existing_image:
                                             self.stdout.write(self.style.WARNING(
-                                                f'Image already exists: {category}/{subcategory}/{condition}/{image_filename}'
+                                                f'Image already exists: Category={category}, Subcategory={subcategory}, Condition={condition}, Filename={image_filename}'
                                             ))
                                             images_to_merge.append(existing_image)
                                         else:
-                                            sample_image = SampleImage.objects.create(
-                                                category=category,
-                                                subcategory=subcategory,
-                                                condition=condition,
-                                                image=File(img_file, name=image_filename)
-                                            )
+                                            with open(image_path, 'rb') as img_file:
+                                                sample_image = SampleImage.objects.create(
+                                                    category=category,
+                                                    subcategory=subcategory,
+                                                    condition=condition,
+                                                    image=File(img_file, name=image_filename),
+                                                    image_hash=image_hash
+                                                )
                                             images_to_merge.append(sample_image)
                                             self.stdout.write(self.style.SUCCESS(
                                                 f'Successfully added image: {category}/{subcategory}/{condition}/{image_filename}'

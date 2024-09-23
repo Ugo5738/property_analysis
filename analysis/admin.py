@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import (
+from analysis.models import (
     AnalysisTask,
     GroupedImages,
     MergedPropertyImage,
@@ -29,6 +29,7 @@ class PropertyAdmin(admin.ModelAdmin):
         return len(obj.failed_downloads)
     failed_downloads_count.short_description = "Failed Downloads"
 
+
 @admin.register(PropertyImage)
 class PropertyImageAdmin(admin.ModelAdmin):
     list_display = ('id', 'property', 'image_preview', 'original_url', 'main_category', 'sub_category', 'room_type', 'condition_label', 'created_at')
@@ -39,6 +40,7 @@ class PropertyImageAdmin(admin.ModelAdmin):
     def image_preview(self, obj):
         return format_html('<img src="{}" width="100" height="100" />', obj.image.url)
     image_preview.short_description = "Image Preview"
+
 
 @admin.register(GroupedImages)
 class GroupedImagesAdmin(admin.ModelAdmin):
@@ -51,6 +53,7 @@ class GroupedImagesAdmin(admin.ModelAdmin):
         return obj.images.count()
     image_count.short_description = "Number of Images"
 
+
 @admin.register(MergedPropertyImage)
 class MergedPropertyImageAdmin(admin.ModelAdmin):
     list_display = ('property', 'image_preview', 'main_category', 'sub_category', 'created_at')
@@ -61,6 +64,7 @@ class MergedPropertyImageAdmin(admin.ModelAdmin):
     def image_preview(self, obj):
         return format_html('<img src="{}" width="100" height="100" />', obj.image.url)
     image_preview.short_description = "Image Preview"
+
 
 @admin.register(SampleImage)
 class SampleImageAdmin(admin.ModelAdmin):
@@ -73,6 +77,7 @@ class SampleImageAdmin(admin.ModelAdmin):
         return format_html('<img src="{}" width="100" height="100" />', obj.image.url)
     image_preview.short_description = "Image Preview"
 
+
 @admin.register(MergedSampleImage)
 class MergedSampleImageAdmin(admin.ModelAdmin):
     list_display = ('category', 'subcategory', 'condition', 'image_preview', 'created_at')
@@ -83,6 +88,7 @@ class MergedSampleImageAdmin(admin.ModelAdmin):
     def image_preview(self, obj):
         return format_html('<img src="{}" width="100" height="100" />', obj.image.url)
     image_preview.short_description = "Image Preview"
+
 
 @admin.register(AnalysisTask)
 class AnalysisTaskAdmin(admin.ModelAdmin):

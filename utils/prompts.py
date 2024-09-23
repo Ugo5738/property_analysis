@@ -4,11 +4,26 @@ import json
 # make the categorization output more flexible and then map the term. For terms outside the scope of categorization words, use the model to map the OOS to categorizations. i.e, let AI handle edge cases and update the code
 
 # Read the JSON file
-with open('utils/data.json', 'r') as file:
+with open("utils/data.json", "r") as file:
     spaces = json.load(file)
 
-internal_types = ', '.join(sum((spaces[area] for area in ['living_space', 'kitchen_space', 'bathroom_space', 'bedroom_space']), []))
-external_types = ', '.join(sum((spaces[area] for area in ['front_garden_space', 'back_garden_space']), []))
+internal_types = ", ".join(
+    sum(
+        (
+            spaces[area]
+            for area in [
+                "living_space",
+                "kitchen_space",
+                "bathroom_space",
+                "bedroom_space",
+            ]
+        ),
+        [],
+    )
+)
+external_types = ", ".join(
+    sum((spaces[area] for area in ["front_garden_space", "back_garden_space"]), [])
+)
 
 categorize_prompt = f"""
 You are an image classification assistant. Categorize each image as either "internal," "external," or "floor plan." Provide details based on the category:
@@ -53,6 +68,7 @@ If processing multiple images, wrap the results in a "images" array:
 
 Ensure consistency in naming and use lowercase for all types.
 """
+
 
 internal_prompt = """
 You are a seasoned realtor with 15 years of experience in the UK. Provide a detailed analysis of the internal image(s), considering Modernization, Fixtures and Fittings, Repair Needs.
@@ -581,4 +597,3 @@ Provide your analysis in the following JSON format:
   ]
 }
 """
-
