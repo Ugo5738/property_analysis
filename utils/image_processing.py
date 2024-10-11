@@ -60,7 +60,9 @@ def scrape_images(url):
         try:
             page.goto(url, timeout=120000)  # Increased timeout to 60 seconds
             logger.info(f"Waiting for images on {url}")
-            page.wait_for_selector("li.slide img", timeout=60000)  # Increased timeout to 60 seconds
+            page.wait_for_selector(
+                "li.slide img", timeout=60000
+            )  # Increased timeout to 60 seconds
             logger.info(f"Images found on {url}")
         except PlaywrightTimeoutError as e:
             logger.error(f"Timeout error for {url}: {e}")
@@ -120,7 +122,9 @@ def get_image_urls(property_url):
     return selected_images
 
 
-async def download_images(property_instance, update_progress, max_retries=3, retry_delay=1, use_selenium=False):
+async def download_images(
+    property_instance, update_progress, max_retries=3, retry_delay=1, use_selenium=False
+):
     image_ids = []
     failed_downloads = []
     driver = None
@@ -138,7 +142,9 @@ async def download_images(property_instance, update_progress, max_retries=3, ret
             for attempt in range(max_retries):
                 try:
                     if use_selenium:
-                        img_content = await sync_to_async(download_with_selenium)(driver, image_url)
+                        img_content = await sync_to_async(download_with_selenium)(
+                            driver, image_url
+                        )
                     else:
                         img_content = await download_with_requests(image_url)
 
@@ -151,16 +157,20 @@ async def download_images(property_instance, update_progress, max_retries=3, ret
                         property_image = await PropertyImage.objects.acreate(
                             property=property_instance,
                             original_url=image_url,
-                            created_at=timezone.now()
+                            created_at=timezone.now(),
                         )
 
                         # Save the image content
-                        await sync_to_async(property_image.image.save)(file_name, ContentFile(img_content), save=False)
+                        await sync_to_async(property_image.image.save)(
+                            file_name, ContentFile(img_content), save=False
+                        )
 
                         # Now save the PropertyImage instance
                         await property_image.asave()
 
-                        print(f"PropertyImage object created with ID: {property_image.id}")
+                        print(
+                            f"PropertyImage object created with ID: {property_image.id}"
+                        )
 
                         # # Verify file was saved
                         # if property_image.image:
@@ -170,7 +180,11 @@ async def download_images(property_instance, update_progress, max_retries=3, ret
                         #     print("Image file was not saved properly")
 
                         image_ids.append(property_image.id)
-                        await update_progress('download', f'Downloaded image {idx + 1}', (idx + 1) / len(property_instance.image_urls) * 100)
+                        await update_progress(
+                            "download",
+                            f"Downloaded image {idx + 1}",
+                            (idx + 1) / len(property_instance.image_urls) * 100,
+                        )
                         break  # Successful download, move to next image
                 except Exception as e:
                     print(f"Error downloading image {idx}: {str(e)}")
@@ -194,7 +208,11 @@ def download_with_selenium(driver, image_url):
         )
         # Find the largest image on the page
         images = driver.find_elements(By.TAG_NAME, "img")
-        largest_image = max(images, key=lambda img: int(img.get_attribute("width") or 0) * int(img.get_attribute("height") or 0))
+        largest_image = max(
+            images,
+            key=lambda img: int(img.get_attribute("width") or 0)
+            * int(img.get_attribute("height") or 0),
+        )
 
         # Get the source of the largest image
         img_src = largest_image.get_attribute("src")
@@ -205,7 +223,7 @@ def download_with_selenium(driver, image_url):
 
         img = Image.open(io.BytesIO(response.content))
         img_io = io.BytesIO()
-        img.save(img_io, format='JPEG')
+        img.save(img_io, format="JPEG")
         return ContentFile(img_io.getvalue())
     except (TimeoutException, WebDriverException) as e:
         print(f"Selenium error: {str(e)}")
@@ -222,7 +240,7 @@ async def download_with_requests(image_url):
 
 def resize_with_aspect_ratio(image, target_size):
     img = Image.open(image)
-    img = img.convert('RGB')
+    img = img.convert("RGB")
     img_array = np.array(img)
     h, w = img_array.shape[:2]
     scale = min(target_size[0] / h, target_size[1] / w)
@@ -235,13 +253,17 @@ def resize_with_aspect_ratio(image, target_size):
     right = target_size[1] - new_w - left
 
     color = [0, 0, 0]  # black
-    padded_image = cv2.copyMakeBorder(resized_image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+    padded_image = cv2.copyMakeBorder(
+        resized_image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color
+    )
     return Image.fromarray(padded_image)
 
 
 async def merge_images(image_objects, condition=None):
     target_size = (256, 256)
-    resized_images = [resize_with_aspect_ratio(img.image, target_size) for img in image_objects]
+    resized_images = [
+        resize_with_aspect_ratio(img.image, target_size) for img in image_objects
+    ]
     num_images = len(resized_images)
 
     if num_images == 1:
@@ -256,7 +278,9 @@ async def merge_images(image_objects, condition=None):
         positions = [(0, 0), (0, 256), (256, 0), (256, 256)]
         for i, image in enumerate(resized_images[:4]):
             y, x = positions[i]
-            merged_image[y:y+256, x:x+256] = np.array(image)[:, :, :3]  # Ensure we only take RGB channels
+            merged_image[y : y + 256, x : x + 256] = np.array(image)[
+                :, :, :3
+            ]  # Ensure we only take RGB channels
         cv2.line(merged_image, (256, 0), (256, 512), (0, 0, 255), 2)
         cv2.line(merged_image, (0, 256), (512, 256), (0, 0, 255), 2)
 
@@ -297,12 +321,12 @@ async def merge_images(image_objects, condition=None):
 
     # Convert the merged image to base64
     img_byte_arr = io.BytesIO()
-    Image.fromarray(merged_image).save(img_byte_arr, format='JPEG')
+    Image.fromarray(merged_image).save(img_byte_arr, format="JPEG")
     return img_byte_arr.getvalue()
 
 
 def get_base64_image(image):
-    base64_encoded = base64.b64encode(image).decode('utf-8')
+    base64_encoded = base64.b64encode(image).decode("utf-8")
     # return f"data:image/png;base64,{base64_encoded}"
     return f"data:image/jpeg;base64,{base64_encoded}"
 
@@ -314,21 +338,23 @@ async def group_images_by_category(image_ids, categories):
         "floor plan": {},
     }
     for image_id, category_info in zip(image_ids, categories):
-        category = category_info.get('category', '').lower()
-        details = category_info.get('details', {})
+        category = category_info.get("category", "").lower()
+        details = category_info.get("details", {})
 
-        if category == 'internal':
-            room_type = details.get('room_type', 'unknown').lower()
-            if room_type != 'unknown':
-                grouped_images['internal'].setdefault(room_type, []).append(image_id)
-        elif category == 'external':
-            exterior_type = details.get('exterior_type', 'unknown').lower()
-            if exterior_type != 'unknown':
-                grouped_images['external'].setdefault(exterior_type, []).append(image_id)
-        elif category == 'floor plan':
-            floor_type = details.get('floor_type', 'unknown').lower()
-            if floor_type != 'unknown':
-                grouped_images['floor plan'].setdefault(floor_type, []).append(image_id)
+        if category == "internal":
+            room_type = details.get("room_type", "unknown").lower()
+            if room_type != "unknown":
+                grouped_images["internal"].setdefault(room_type, []).append(image_id)
+        elif category == "external":
+            exterior_type = details.get("exterior_type", "unknown").lower()
+            if exterior_type != "unknown":
+                grouped_images["external"].setdefault(exterior_type, []).append(
+                    image_id
+                )
+        elif category == "floor plan":
+            floor_type = details.get("floor_type", "unknown").lower()
+            if floor_type != "unknown":
+                grouped_images["floor plan"].setdefault(floor_type, []).append(image_id)
 
     # Remove empty categories
     return {k: v for k, v in grouped_images.items() if v}

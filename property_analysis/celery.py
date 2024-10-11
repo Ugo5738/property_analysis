@@ -13,11 +13,15 @@ app = Celery("property_analysis")
 # the configuration object to child processes.
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
+# # Set default queue
+# app.conf.task_default_queue = "analysis_queue"
+
 # # Load task modules from all registered Django app configs.
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 # app.autodiscover_tasks()
 app.conf.broker_url = config("REDIS_URL")
+
 
 @app.task(bind=True)
 def debug_task(self):

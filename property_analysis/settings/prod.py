@@ -97,8 +97,16 @@ CELERY_IMPORTS = ("property_analysis.tasks",)
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+
+# CELERY_TASK_QUEUES = {
+#     "analysis_queue": {
+#         "exchange": "analysis_exchange",
+#         "routing_key": "analysis.#",
+#     },
+# }
 # ================================ CELERY =======================================
 
+MY_DOMAIN = "http://analysis-app:8000"
 
 # ================================ HEROKU =======================================
 # # ==> HEROKU LOGGING

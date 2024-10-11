@@ -1,13 +1,15 @@
-import json
 from venv import logger
 
-from asgiref.sync import sync_to_async
-from celery.exceptions import OperationalError
-from channels.db import database_sync_to_async
+import requests
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from django.conf import settings
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from analysis.models import AnalysisTask, Property, PropertyImage
 from analysis.serializers import (
@@ -17,7 +19,6 @@ from analysis.serializers import (
 )
 from analysis.tasks import analyze_property, clear_property_data
 from property_analysis.config.logging_config import configure_logger
-from utils.image_processing import get_image_urls
 
 logger = configure_logger(__name__)
 
@@ -37,6 +38,17 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Determine the source from the URL
+        if "rightmove" in url:
+            source = "rightmove"
+        elif "onthemarket" in url:
+            source = "onthemarket"
+        else:
+            return Response(
+                {"error": "Unsupported URL source."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if property_id:
             try:
                 property_instance = Property.objects.get(id=property_id)
@@ -51,25 +63,34 @@ class PropertyViewSet(viewsets.ModelViewSet):
         # Clear existing data
         clear_property_data(property_instance)
 
-        # Get and store image URLs
-        try:
-            image_urls = get_image_urls(url)
-            property_instance.image_urls = image_urls
-            property_instance.save()
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
         task = AnalysisTask.objects.create(property=property_instance)
-        print("This is the task id: ", task.id)
 
+        # Prepare callback URL
+        callback_url = request.build_absolute_uri(reverse("scraping-callback"))
+        # callback_url = f"{settings.MY_DOMAIN}{reverse('scraping-callback')}"
+        logger.info(f"Generated callback URL: {callback_url}")
+
+        # Send HTTP request to scraper app to start scraping
         try:
-            analyze_property.delay(
-                property_instance.id, task.id, "1"
-            )  # Use request.user.id if authentication is implemented
-        except OperationalError as e:
-            logger.error(f"Celery operational error: {str(e)}")
+            response = requests.post(
+                # "http://analysis-scraper-app:8001/api/site-scrapers/scrape/",
+                "https://52.23.156.175/api/site-scrapers/scrape/",
+                json={
+                    "url": url,
+                    "source": source,
+                    "callback_url": callback_url,
+                    "property_id": property_instance.id,
+                    "task_id": task.id,
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            job_id = response.json().get("job_id")
+            task.save()
+        except requests.RequestException as e:
+            logger.error(f"Failed to start scraping job: {str(e)}")
             return Response(
-                {"error": "Task queueing failed. Please try again later."},
+                {"error": "Failed to start scraping job."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -115,6 +136,54 @@ class PropertyViewSet(viewsets.ModelViewSet):
         properties = Property.objects.all().order_by("-created_at")
         serializer = self.get_serializer(properties, many=True)
         return Response(serializer.data)
+
+
+class ScrapingCallbackView(APIView):
+    def post(self, request):
+        # Check if this is a progress update
+        if "progress" in request.data:
+            # Handle progress update
+            job_id = request.data.get("job_id")
+            progress_data = request.data.get("progress")
+
+            if not job_id or progress_data is None:
+                return Response(
+                    {"error": "Invalid progress data."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Retrieve user_id or group associated with the job
+            user_id = "1"  # Use request.user.id if authentication is implemented
+
+            # Send progress update via WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"analysis_{user_id}",
+                {
+                    "type": "analysis_progress",
+                    "message": progress_data,
+                },
+            )
+
+            return Response(status=status.HTTP_200_OK)
+        else:
+            # Extract data from the callback
+            job_id = request.data.get("job_id")
+            property_id = request.data.get("property_id")
+            task_id = request.data.get("task_id")
+
+            if not job_id or not property_id or not task_id:
+                return Response(
+                    {"error": "Invalid callback data."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            user_id = "1"  # Use request.user.id if authentication is implemented
+
+            # Enqueue task to process the scraped data
+            analyze_property.delay(property_id, task_id, user_id, job_id)
+
+            return Response(status=status.HTTP_200_OK)
 
 
 class PropertyImageViewSet(viewsets.ModelViewSet):

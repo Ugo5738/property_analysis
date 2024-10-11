@@ -29,6 +29,7 @@ langchain
 langchain-community
 langchain-openai
 llama-index
+lxml
 markdown
 more-itertools
 numpy
@@ -43,6 +44,8 @@ python-decouple
 python-dotenv
 python-Levenshtein
 psycopg2-binary
+requests
 scikit-learn
 selenium
 stripe
+webdriver-manager

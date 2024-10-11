@@ -6,29 +6,37 @@ services:
     command: sh -c "python manage.py makemigrations && python manage.py migrate && daphne property_analysis.asgi:application -b 0.0.0.0 -p 8000"
     volumes:
       - .:/code
-    ports:
-      - '8000:8000'
-    # expose:
-    #   - "8000"
+    # ports:
+    #   - '8000:8000'
+    expose:
+      - "8000"
+    # networks:
+    #   default:
+    #     aliases:
+    #       - analysis-app
     depends_on:
       - redis
-    container_name: analysis_app
+    container_name: analysis-app
 
   redis:
     image: redis:latest
-    container_name: analysis_app_redis
+    container_name: analysis-app-redis
+    # networks:
+    #   default:
+    #     aliases:
+    #       - analysis-app-redis
 
-  # nginx:
-  #   image: nginx:latest
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   volumes:
-  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
-  #     - ./ssl:/etc/nginx/ssl:ro
-  #   depends_on:
-  #     - web
-  #   container_name: nginx_proxy
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - web
+    container_name: nginx_proxy
 
   celery:
     build:
@@ -36,15 +44,21 @@ services:
       dockerfile: Dockerfile
     command: >
       sh -c "
-        echo 'Waiting for analysis_app and redis...';
-        while ! nc -z analysis_app 8000 || ! nc -z redis 6379; do
+        echo 'Waiting for analysis-app and redis...';
+        while ! nc -z analysis-app 8000 || ! nc -z redis 6379; do
           sleep 1;
         done;
         echo 'Web and Redis are up - starting celery worker';
         celery -A property_analysis worker --loglevel=info
+        # celery -A property_analysis worker --loglevel=info -Q analysis_queue
       "
     volumes:
       - .:/code
     depends_on:
       - redis
-    container_name: analysis_app_celery
+    container_name: analysis-app-celery
+
+# networks:
+#   default:
+#     external:
+#       name: shared_network

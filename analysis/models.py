@@ -8,6 +8,15 @@ from django.utils.translation import gettext_lazy as _
 
 class Property(models.Model):
     url = models.URLField(unique=True)
+    address = models.CharField(max_length=255, null=True, blank=True)
+    price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    bedrooms = models.IntegerField(null=True, blank=True)
+    bathrooms = models.IntegerField(null=True, blank=True)
+    size = models.CharField(max_length=100, null=True, blank=True)
+    house_type = models.CharField(max_length=100, null=True, blank=True)
+    agent = models.CharField(max_length=255, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    floorplan_urls = models.JSONField(default=list, blank=True)
     overall_condition = models.JSONField(null=True, blank=True)
     detailed_analysis = models.JSONField(null=True, blank=True)
     failed_downloads = models.JSONField(default=list)
@@ -128,6 +137,7 @@ class AnalysisTask(models.Model):
     progress = models.FloatField(default=0.0)
     stage = models.CharField(max_length=50, default="")
     stage_progress = models.JSONField(default=dict)
+    # external_job_id
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
