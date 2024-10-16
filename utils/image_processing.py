@@ -168,16 +168,16 @@ async def download_images(
                         # Now save the PropertyImage instance
                         await property_image.asave()
 
-                        print(
+                        logger.info(
                             f"PropertyImage object created with ID: {property_image.id}"
                         )
 
                         # # Verify file was saved
                         # if property_image.image:
-                        #     # print(f"Image file saved at: {property_image.image.path}")
-                        #     print(f"File exists: {await sync_to_async(os.path.exists)(property_image.image.path)}")
+                        #     # logger.info(f"Image file saved at: {property_image.image.path}")
+                        #     logger.info(f"File exists: {await sync_to_async(os.path.exists)(property_image.image.path)}")
                         # else:
-                        #     print("Image file was not saved properly")
+                        #     logger.info("Image file was not saved properly")
 
                         image_ids.append(property_image.id)
                         await update_progress(
@@ -187,12 +187,12 @@ async def download_images(
                         )
                         break  # Successful download, move to next image
                 except Exception as e:
-                    print(f"Error downloading image {idx}: {str(e)}")
+                    logger.info(f"Error downloading image {idx}: {str(e)}")
                     if attempt == max_retries - 1:
                         failed_downloads.append((idx, image_url, str(e)))
                     else:
                         await asyncio.sleep(retry_delay * (attempt + 1))
-        print("Finished processing all images")
+        logger.info("Finished processing all images")
     finally:
         if driver:
             await sync_to_async(driver.quit)()
