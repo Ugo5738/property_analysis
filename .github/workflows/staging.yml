@@ -161,11 +161,11 @@ jobs:
             CRON_JOB="0 0 * * * /usr/bin/docker system prune -af > /var/log/docker_cleanup.log 2>&1"
 
             # Create a log file and set permissions (if not already exist)
-            TOUCH_LOG_CMD="sudo touch /var/log/docker_cleanup.log && sudo chmod 644 /var/log/docker_cleanup.log"
-            (crontab -l | grep -q "/var/log/docker_cleanup.log") || (eval "$TOUCH_LOG_CMD")
+            sudo touch /var/log/docker_cleanup.log
+            sudo chmod 644 /var/log/docker_cleanup.log
 
-            # Check if the cleanup cron job already exists
-            (crontab -l | grep -q "docker system prune") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | sudo crontab -
+            # Check if the cleanup cron job already exists for the current user
+            (crontab -l 2>/dev/null | grep -q "docker system prune") || ( (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab - )
 
             # Ensure the cron service is running
             sudo service cron restart
