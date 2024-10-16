@@ -83,6 +83,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     "task_id": task.id,
                 },
                 timeout=10,
+                verify=False,
             )
             response.raise_for_status()
             job_id = response.json().get("job_id")

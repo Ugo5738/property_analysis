@@ -1,3 +1,5 @@
+import ssl
+
 import aiohttp
 from asgiref.sync import async_to_sync
 from celery import shared_task
@@ -42,12 +44,18 @@ async def analyze_property_async(property_id, task_id, user_id, job_id):
         # Download images
         await update_progress("download", "Downloading images", 0)
 
+        # Create an SSL context that does not verify certificates
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
         # Retrieve scraped data from scraper app
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 # f"http://analysis-scraper-app:8001/api/site-scrapers/scrape/{job_id}/data/",
                 f"https://52.23.156.175/api/site-scrapers/scrape/{job_id}/data/",
                 timeout=10,
+                ssl=ssl_context,
             ) as response:
                 if response.status != 200:
                     raise Exception(
