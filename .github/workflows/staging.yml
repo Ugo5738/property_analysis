@@ -176,3 +176,4 @@ jobs:
 # username = propertyanalysisai
 # repo name = propertyanalysis
 # .env encrypt with propertyanalysis
+# gpg --symmetric --cipher-algo AES256 --output .env.gpg .env
