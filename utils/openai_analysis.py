@@ -12,7 +12,6 @@ def encode_image(image_file):
 
 async def analyze_single_image(text_prompt, target_image, sample_images_dict=None):
     try:
-
         messages = [
             {
                 "role": "user",

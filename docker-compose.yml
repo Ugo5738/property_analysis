@@ -1,5 +1,6 @@
 services:
   web:
+    container_name: analysis-app
     build:
       context: .
       dockerfile: Dockerfile
@@ -14,17 +15,17 @@ services:
           - analysis-app
     depends_on:
       - redis
-    container_name: analysis-app
-
+    
   redis:
-    image: redis:latest
     container_name: analysis-app-redis
+    image: redis:latest
     networks:
       default:
         aliases:
           - analysis-app-redis
 
   celery:
+    container_name: analysis-app-celery
     build:
       context: .
       dockerfile: Dockerfile
@@ -41,9 +42,8 @@ services:
       - .:/code
     depends_on:
       - redis
-    container_name: analysis-app-celery
-
+    
 networks:
   default:
-    external:
-      name: shared_network
+    name: shared_network
+    external: True

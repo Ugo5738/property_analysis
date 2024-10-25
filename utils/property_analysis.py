@@ -1,9 +1,14 @@
 import asyncio
 import base64
 import json
+from collections import defaultdict
 
+import clip
+import numpy as np
+import torch
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
+from sklearn.metrics.pairwise import cosine_similarity
 
 from analysis.models import (
     GroupedImages,
@@ -11,9 +16,10 @@ from analysis.models import (
     MergedSampleImage,
     Property,
     PropertyImage,
+    SampleImage,
 )
 from property_analysis.config.logging_config import configure_logger
-from utils.image_processing import merge_images
+from utils.image_processing import compute_embedding, merge_images
 from utils.openai_analysis import (
     analyze_single_image,
     encode_image,
@@ -54,16 +60,19 @@ async def process_property(property_url, image_ids, update_progress):
         await categorize_images(
             property_instance, image_ids, results, update_step_progress
         )
+        print("Done categorizing...")
 
         # Step 2: Grouping images
         step = 2
         await update_step_progress("grouping", "Grouping images by category", 0)
         await group_images(property_instance, results, update_step_progress)
+        print("Done grouping...")
 
         # Step 3: Merging images
         step = 3
         await update_step_progress("merging", "Merging grouped images", 0)
         await merge_grouped_images(property_instance, results, update_step_progress)
+        print("Done merging...")
 
         # Step 4: Detailed analysis
         step = 4
@@ -71,12 +80,15 @@ async def process_property(property_url, image_ids, update_progress):
         all_condition_ratings = await analyze_merged_images(
             property_instance, results, update_step_progress
         )
+        print("Done analyzing...")
 
         # Step 5: Overall condition calculation
         step = 5
         await update_step_progress(
             "overall_analysis", "Calculating overall property condition", 0
         )
+        print("Done updating...")
+
         property_condition = analyze_property_condition(all_condition_ratings)
         results["stages"]["overall_condition"] = property_condition
         logger.info(f"This is the final results: {results}")
@@ -294,6 +306,8 @@ async def merge_grouped_images(property_instance, results, update_step_progress)
                         await sync_to_async(merged_property_image.image.save)(
                             filename, ContentFile(merged_image), save=True
                         )
+                        # Associate images used to create the merged image
+                        await merged_property_image.images.aset(subgroup)
 
                         results["stages"]["merged_images"].setdefault(
                             f"{group.main_category}_{group.sub_category}", []
@@ -341,7 +355,8 @@ async def analyze_merged_images(property_instance, results, update_step_progress
     all_condition_ratings = []
 
     for idx, merged_image in enumerate(merged_images):
-        sample_images = await sync_to_async(list)(
+        # Retrieve sample images and their embeddings for the same category and subcategory
+        sample_merged_images = await sync_to_async(list)(
             MergedSampleImage.objects.filter(
                 category=merged_image.main_category,
                 subcategory=merged_image.sub_category,
@@ -350,24 +365,27 @@ async def analyze_merged_images(property_instance, results, update_step_progress
 
         # Encode sample images
         sample_images_dict = {}
-        for item in sample_images:
-            encoded_image = encode_image(item.image)
-            sample_images_dict[item.condition] = (
+        conditions = []
+        # For each sample merged image (should be one per condition)
+        for sample_merged_image in sample_merged_images:
+            condition_label = sample_merged_image.condition
+            encoded_image = encode_image(sample_merged_image.image)
+            sample_images_dict[condition_label] = (
                 f"data:image/jpeg;base64,{encoded_image}"
             )
+            conditions.append(condition_label)
 
         if not sample_images_dict:
             continue
 
-        conditions = list(sample_images_dict.keys())
+        # Encode the merged image
+        encoded_merged_image = encode_image(merged_image.image)
+        base64_merged_image = f"data:image/jpeg;base64,{encoded_merged_image}"
+
         full_prompt = (
             f"{labelling_prompt}\n\nSample images are provided for the following conditions: {', '.join(conditions)}. "
             f"The target images (2x2 grid) follow these sample images."
         )
-
-        # Encode the merged image
-        encoded_merged_image = encode_image(merged_image.image)
-        base64_merged_image = f"data:image/jpeg;base64,{encoded_merged_image}"
 
         try:
             structured_output = await analyze_single_image(
@@ -390,35 +408,118 @@ async def analyze_merged_images(property_instance, results, update_step_progress
                 image_analyses = parsed_result.get("images", [])
 
                 processed_analyses = []
-                group_images = await sync_to_async(list)(
-                    PropertyImage.objects.filter(
-                        property=property_instance,
-                        main_category=merged_image.main_category,
-                        sub_category=merged_image.sub_category,
-                    )
+
+                # Retrieve individual target images associated with the merged image
+                images_in_merged_image = await sync_to_async(list)(
+                    merged_image.images.all().order_by("id")
                 )
-                for analysis, img in zip(image_analyses, group_images):
+
+                # Ensure embeddings are available for target images
+                for img in images_in_merged_image:
+                    if img.embedding is None:
+                        # Compute and store embedding if not available
+                        image_file = img.image.path
+                        embedding = compute_embedding(image_file)
+                        img.embedding = embedding.tolist()
+                        await img.asave()
+                    else:
+                        embedding = np.array(img.embedding)
+
+                    # Store the embedding in a variable for later use
+                    img.embedding_array = embedding
+
+                # Map image_tag_number to PropertyImage
+                # Assuming images are ordered corresponding to quadrants 1-4
+                image_quadrant_mapping = {
+                    i + 1: img for i, img in enumerate(images_in_merged_image)
+                }
+
+                # -------------------------
+                # Compute Similarity Scores
+                # -------------------------
+                for analysis in image_analyses:
+                    image_number = int(analysis.get("image_tag_number"))
+                    img = image_quadrant_mapping.get(image_number)
+                    if not img:
+                        logger.warning(
+                            f"No image found for image_number {image_number}"
+                        )
+                        continue
+
+                    # group_images = await sync_to_async(list)(
+                    #     PropertyImage.objects.filter(
+                    #         property=property_instance,
+                    #         main_category=merged_image.main_category,
+                    #         sub_category=merged_image.sub_category,
+                    #     )
+                    # )
+                    # for analysis, img in zip(image_analyses, group_images):
                     condition_label_raw = analysis.get("condition", "Average")
                     condition_label = standardize_condition_label(condition_label_raw)
                     all_condition_ratings.append(condition_label)
+
+                    # Compute similarity scores for this target image
+                    similarities_per_condition = {}
+
+                    for sample_merged_image in sample_merged_images:
+                        condition_label_sample = sample_merged_image.condition
+
+                        # Retrieve individual sample images from the quadrant mapping
+                        sample_quadrant_mapping = (
+                            sample_merged_image.quadrant_mapping
+                        )  # Dict mapping str quadrant number to SampleImage IDs
+                        sample_images = []
+                        for (
+                            quadrant_num_str,
+                            sample_img_id,
+                        ) in sample_quadrant_mapping.items():
+                            sample_img = await sync_to_async(SampleImage.objects.get)(
+                                id=sample_img_id
+                            )
+                            if sample_img.embedding is not None:
+                                sample_embedding = np.array(sample_img.embedding)
+                            else:
+                                # Compute and store embedding if not available
+                                image_file = sample_img.image.path
+                                sample_embedding = compute_embedding(image_file)
+                                sample_img.embedding = sample_embedding.tolist()
+                                await sample_img.asave()
+
+                            # Compute similarity
+                            similarity = cosine_similarity(
+                                [img.embedding_array], [sample_embedding]
+                            )
+                            similarities_per_condition.setdefault(
+                                condition_label_sample, []
+                            ).append(similarity[0][0])
+
+                    # Average similarity scores for each condition
+                    avg_similarities = {
+                        condition: sum(scores) / len(scores) if scores else 0
+                        for condition, scores in similarities_per_condition.items()
+                    }
+
                     processed_analysis = {
-                        "image_number": analysis.get("image_tag_number", "Unknown"),
+                        "image_number": image_number,
                         "condition_label": condition_label,
                         "reasoning": analysis.get("reasoning", "No reasoning provided"),
                         "image_url": img.image.url if img.image else None,
                         "image_id": img.id,
+                        "similarities": avg_similarities,
                     }
                     processed_analyses.append(processed_analysis)
 
                     # Update individual PropertyImage instances
                     img.condition_label = condition_label
                     img.reasoning = analysis.get("reasoning", "No reasoning provided")
+                    img.similarity_scores = avg_similarities
                     await img.asave()
 
-                # Use setdefault and extend to accumulate analyses
-                results["stages"]["detailed_analysis"].setdefault(
-                    f"{merged_image.main_category}_{merged_image.sub_category}", []
-                ).extend(processed_analyses)
+                # Store the processed analyses in results
+                key = f"{merged_image.main_category}_{merged_image.sub_category}"
+                results["stages"]["detailed_analysis"].setdefault(key, []).extend(
+                    processed_analyses
+                )
 
             except json.JSONDecodeError:
                 logger.error(
@@ -547,7 +648,3 @@ Detailed calculation of overall property condition:
 
     result["explanation"] = explanation
     return result
-
-
-# https://www.onthemarket.com/details/14989469/
-# https://www.onthemarket.com/details/15810660/

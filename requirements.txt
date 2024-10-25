@@ -49,3 +49,14 @@ scikit-learn
 selenium
 stripe
 webdriver-manager
+
+# CLIP
+ftfy
+regex
+tqdm
+torch
+torchvision
+torchaudio
+git+https://github.com/openai/CLIP.git
+numpy
+Pillow

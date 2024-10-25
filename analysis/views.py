@@ -3,6 +3,7 @@ from venv import logger
 import requests
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from decouple import config
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -65,27 +66,40 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
         task = AnalysisTask.objects.create(property=property_instance)
 
-        # Prepare callback URL
-        callback_url = request.build_absolute_uri(reverse("scraping-callback"))
-        # callback_url = f"{settings.MY_DOMAIN}{reverse('scraping-callback')}"
-        logger.info(f"Generated callback URL: {callback_url}")
-
         # Send HTTP request to scraper app to start scraping
         try:
-            response = requests.post(
-                # "http://analysis-scraper-app:8001/api/site-scrapers/scrape/",
-                "https://52.23.156.175/api/site-scrapers/scrape/",
-                json={
-                    "url": url,
-                    "source": source,
-                    "callback_url": callback_url,
-                    "property_id": property_instance.id,
-                    "task_id": task.id,
-                },
-                timeout=10,
-                verify=False,
-            )
-            response.raise_for_status()
+            if config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.staging":
+                # Prepare callback URL
+                callback_url = f"{settings.MY_DOMAIN}{reverse('scraping-callback')}"
+                logger.info(f"Generated callback URL: {callback_url}")
+                response = requests.post(
+                    "http://analysis-scraper-app:8001/api/site-scrapers/scrape/",
+                    json={
+                        "url": url,
+                        "source": source,
+                        "callback_url": callback_url,
+                        "property_id": property_instance.id,
+                        "task_id": task.id,
+                    },
+                    timeout=10,
+                )
+            elif config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.prod":
+                # Prepare callback URL
+                callback_url = request.build_absolute_uri(reverse("scraping-callback"))
+                logger.info(f"Generated callback URL: {callback_url}")
+                response = requests.post(
+                    "https://52.23.156.175/api/site-scrapers/scrape/",
+                    json={
+                        "url": url,
+                        "source": source,
+                        "callback_url": callback_url,
+                        "property_id": property_instance.id,
+                        "task_id": task.id,
+                    },
+                    timeout=10,
+                    verify=False,
+                )
+                response.raise_for_status()
             job_id = response.json().get("job_id")
             task.save()
         except requests.RequestException as e:

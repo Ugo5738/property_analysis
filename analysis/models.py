@@ -1,5 +1,3 @@
-# from django.contrib.postgres.fields import JSONField
-# from django.contrib.postgres.fields import ArrayField
 import hashlib
 
 from django.db import models
@@ -47,6 +45,8 @@ class PropertyImage(models.Model):
     )  # e.g., "living room", "master bedroom"
     condition_label = models.CharField(max_length=100, blank=True)
     reasoning = models.TextField(blank=True)
+    embedding = models.JSONField(null=True, editable=False)
+    similarity_scores = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -77,6 +77,7 @@ class MergedPropertyImage(models.Model):
     main_category = models.CharField(max_length=100)  # e.g., "internal_living_spaces"
     sub_category = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+    images = models.ManyToManyField(PropertyImage)
 
     class Meta:
         verbose_name = _("Merged Property Image")
@@ -90,6 +91,7 @@ class SampleImage(models.Model):
     condition = models.CharField(max_length=100)  # e.g., "excellent"
     image = models.ImageField(upload_to="sample_images/")
     image_hash = models.CharField(max_length=32, unique=True, editable=False)
+    embedding = models.JSONField(null=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -121,6 +123,7 @@ class MergedSampleImage(models.Model):
     subcategory = models.CharField(max_length=100)  # e.g., "living_spaces"
     condition = models.CharField(max_length=100)  # e.g., "excellent"
     image = models.ImageField(upload_to="merged_sample_images/")
+    quadrant_mapping = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -137,7 +140,6 @@ class AnalysisTask(models.Model):
     progress = models.FloatField(default=0.0)
     stage = models.CharField(max_length=50, default="")
     stage_progress = models.JSONField(default=dict)
-    # external_job_id
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

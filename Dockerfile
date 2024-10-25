@@ -33,10 +33,13 @@ COPY . /code/
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Download the CLIP model
+RUN python -c "import torch; import clip; clip.load('ViT-B/32')"
+
 # Run playwright install to ensure all browsers are downloaded
 RUN playwright install --with-deps
 
-# Verify Playwright installation (add this line)
+# Verify Playwright installation
 RUN npx playwright --version
 
 # Set execute permission for entrypoint.sh

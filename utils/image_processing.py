@@ -6,10 +6,12 @@ import re
 from urllib.parse import urlparse
 
 import aiohttp
+import clip
 import cv2
 import numpy as np
 import pandas as pd
 import requests
+import torch
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 from django.utils import timezone
@@ -27,6 +29,34 @@ from analysis.models import PropertyImage
 from property_analysis.config.logging_config import configure_logger
 
 logger = configure_logger(__name__)
+
+
+# Initialize CLIP model and preprocessing
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model, preprocess = clip.load("ViT-B/32", device=device)
+
+
+async def compute_image_embedding(image_content):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, sync_compute_embedding, image_content)
+
+
+def sync_compute_embedding(image_content):
+    image = Image.open(io.BytesIO(image_content)).convert("RGB")
+    image_input = preprocess(image).unsqueeze(0).to(device)
+    with torch.no_grad():
+        embedding = model.encode_image(image_input)
+    embedding = embedding.cpu().numpy().flatten()
+    return embedding
+
+
+def compute_embedding(image_path):
+    image = Image.open(image_path).convert("RGB")
+    image_input = preprocess(image).unsqueeze(0).to(device)
+    with torch.no_grad():
+        embedding = model.encode_image(image_input)
+    embedding = embedding.cpu().numpy().flatten()
+    return embedding
 
 
 # Define headers to mimic a real browser request
@@ -165,7 +195,9 @@ async def download_images(
                             file_name, ContentFile(img_content), save=False
                         )
 
-                        # Now save the PropertyImage instance
+                        # Compute and store embedding and save the PropertyImage instance
+                        embedding = await compute_image_embedding(img_content)
+                        property_image.embedding = embedding.tolist()
                         await property_image.asave()
 
                         logger.info(
