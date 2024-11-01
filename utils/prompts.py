@@ -486,7 +486,7 @@ labelling_prompt = """
 2. The 5th image (labeled as image number 5) is the unlabeled target image that you need to categorize.
 
 Your task is to categorize ONLY the 5th image (image number 5) based on the criteria below and the example images provided. Do not analyze or categorize the first 4 images - they are only for reference.
-
+ 
 Note:
 - Excellent is held to a very high standard
 - Above average is less than Excellent but has good to very good standard
@@ -502,6 +502,8 @@ Excellent:
 - Cohesive design with attention to detail
 - Desirable features like fireplaces or built-ins
 - Impeccable presentation and staging
+- Pristine condition of structural elements: flawless floors, ceilings, walls, windows, and doors with high-quality materials
+- No visible signs of wear, damage, or maintenance issues
 
 Above Average:
 - Good quality finishes and fixtures
@@ -510,6 +512,7 @@ Above Average:
 - Cohesive color scheme and design
 - Some desirable features
 - Clean and well-presented overall
+- Well-maintained structural elements: floors, ceilings, walls, windows, and doors in good condition with minimal signs of wear
 
 Below Average:
 - Dated or worn finishes and fixtures
@@ -519,6 +522,7 @@ Below Average:
 - Lack of cohesive design or color scheme
 - Few desirable features
 - Signs of wear and lack of updates
+- Noticeable issues with structural elements: scuffed floors, peeling paint on walls or ceilings, older windows and doors
 
 Poor:
 - Visible damage or disrepair
@@ -528,8 +532,9 @@ Poor:
 - Cluttered or unkempt appearance
 - No desirable features beyond basics
 - Clear signs of neglect or poor maintenance
+- Significant structural problems: damaged floors, cracked walls or ceilings, broken windows or doors
 
-For Exterior Spaces (Front Garden and Back Garden):
+For Exterior Spaces (Including Building Structure, Front Garden and Back Garden):
 
 Excellent:
 - Professional landscaping with a variety of well-maintained plants, trees, and flowers
@@ -538,6 +543,7 @@ Excellent:
 - Cohesive design that complements the house architecture
 - Desirable features like water features, outdoor lighting, or seating areas
 - Impeccable maintenance with no visible weeds or overgrowth
+- Outstanding building condition: roof, siding, and structural elements are in excellent repair with high-quality materials
 - For front gardens: Inviting entrance with well-maintained driveway and walkway
 - For back gardens: Private, well-defined spaces for relaxation and/or entertainment
 
@@ -546,6 +552,7 @@ Above Average:
 - Neat, well-kept lawn (if present)
 - Some hardscaping elements in good condition
 - Overall tidy appearance with minimal weeds
+- Building structure is well-maintained: roof and exterior surfaces show minor signs of aging but no major issues
 - For front gardens: Clear, welcoming path to the entrance
 - For back gardens: Defined areas for different activities (e.g., dining, lounging)
 
@@ -555,6 +562,7 @@ Below Average:
 - Basic or worn hardscaping
 - Some visible weeds or untidy areas
 - Lack of cohesive design
+- Visible wear on building structure: faded paint, minor cracks, or an aging roof that may need attention soon
 - For front gardens: Uninviting or unclear path to entrance
 - For back gardens: Lack of defined spaces or purpose
 
@@ -564,10 +572,21 @@ Poor:
 - Damaged or absent hardscaping
 - Cluttered with debris, excessive weeds, or unused items
 - No discernible landscaping plan
+- Serious structural issues: damaged roof, significant cracks in walls, or other signs of neglect on the building exterior
 - For front gardens: Unkempt appearance that detracts from the house's curb appeal
 - For back gardens: Unusable or unsafe spaces with no clear purpose
 
-When categorizing, compare the image to both these criteria and the provided sample images for each category. Pay attention to the overall quality, design, condition, and presentation of the space. Ensure your categorization aligns with the examples provided for each category.
+When categorizing, compare the image to both these criteria and the provided sample images for each category. Pay attention to the overall quality, design, condition, and presentation of the space, including structural elements like the floor, ceiling, walls, windows, doors, and roof. Ensure your categorization aligns with the examples provided for each category.
+
+When categorizing, after assigning a condition label, assign a numeric value between 0 and 100% corresponding to the condition, where:
+
+- Excellent falls between 80 - 100%
+- Above Average falls between 60 - 80%
+- Average falls between 40 - 60%
+- Below Average falls between 20 - 40%
+- Poor falls between 0 - 20%
+
+Ensure your numeric score accurately reflects the condition of the image based on the criteria and examples provided.
 
 Now categorize ONLY the 2x2 grid images in the 5th image, using the labeled images as reference examples.
 Provide your analysis in the following JSON format:
@@ -577,21 +596,25 @@ Provide your analysis in the following JSON format:
     {
       "image_tag_number": int,
       "condition": string,
+      "condition_score": int,
       "reasoning": string
     },
     {
       "image_tag_number": int,
       "condition": string,
+      "condition_score": int,
       "reasoning": string
     },
     {
       "image_tag_number": int,
       "condition": string,
+      "condition_score": int,
       "reasoning": string
     },
     {
       "image_tag_number": int,
       "condition": string,
+      "condition_score": int,
       "reasoning": string
     }
   ]

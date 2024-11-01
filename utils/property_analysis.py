@@ -77,7 +77,7 @@ async def process_property(property_url, image_ids, update_progress):
         # Step 4: Detailed analysis
         step = 4
         await update_step_progress("analysis", "Analyzing merged images", 0)
-        all_condition_ratings = await analyze_merged_images(
+        all_condition_labels, all_condition_scores = await analyze_merged_images(
             property_instance, results, update_step_progress
         )
         print("Done analyzing...")
@@ -89,7 +89,9 @@ async def process_property(property_url, image_ids, update_progress):
         )
         print("Done updating...")
 
-        property_condition = analyze_property_condition(all_condition_ratings)
+        property_condition = analyze_property_condition(
+            all_condition_labels, all_condition_scores
+        )
         results["stages"]["overall_condition"] = property_condition
         logger.info(f"This is the final results: {results}")
         await update_step_progress(
@@ -352,7 +354,8 @@ async def analyze_merged_images(property_instance, results, update_step_progress
         MergedPropertyImage.objects.filter(property=property_instance)
     )
     total_analyses = len(merged_images)
-    all_condition_ratings = []
+    all_condition_scores = []
+    all_condition_labels = []
 
     for idx, merged_image in enumerate(merged_images):
         # Retrieve sample images and their embeddings for the same category and subcategory
@@ -456,7 +459,9 @@ async def analyze_merged_images(property_instance, results, update_step_progress
                     # for analysis, img in zip(image_analyses, group_images):
                     condition_label_raw = analysis.get("condition", "Average")
                     condition_label = standardize_condition_label(condition_label_raw)
-                    all_condition_ratings.append(condition_label)
+                    condition_score = int(analysis.get("condition_score", 50))
+                    all_condition_scores.append(condition_score)
+                    all_condition_labels.append(condition_label)
 
                     # Compute similarity scores for this target image
                     similarities_per_condition = {}
@@ -502,6 +507,7 @@ async def analyze_merged_images(property_instance, results, update_step_progress
                     processed_analysis = {
                         "image_number": image_number,
                         "condition_label": condition_label,
+                        "condition_score": condition_score,
                         "reasoning": analysis.get("reasoning", "No reasoning provided"),
                         "image_url": img.image.url if img.image else None,
                         "image_id": img.id,
@@ -511,6 +517,7 @@ async def analyze_merged_images(property_instance, results, update_step_progress
 
                     # Update individual PropertyImage instances
                     img.condition_label = condition_label
+                    img.condition_score = condition_score
                     img.reasoning = analysis.get("reasoning", "No reasoning provided")
                     img.similarity_scores = avg_similarities
                     await img.asave()
@@ -531,119 +538,194 @@ async def analyze_merged_images(property_instance, results, update_step_progress
             f"Analyzed group {idx+1}/{total_analyses}",
             (idx + 1) / total_analyses,
         )
-    return all_condition_ratings
+    return all_condition_labels, all_condition_scores
 
 
-def analyze_property_condition(conditions):
-    # Standardized condition labels
-    condition_values = {
-        "Excellent": 5,
-        "Above Average": 4,
-        "Average": 3,
-        "Below Average": 2,
-        "Poor": 1,
-    }
-    # Map any variations to standardized labels
-    standardized_conditions = []
-    invalid_conditions = []
+# def analyze_property_condition(conditions):
+#     # Standardized condition labels
+#     condition_values = {
+#         "Excellent": 5,
+#         "Above Average": 4,
+#         "Average": 3,
+#         "Below Average": 2,
+#         "Poor": 1,
+#     }
+#     # Map any variations to standardized labels
+#     standardized_conditions = []
+#     invalid_conditions = []
 
-    for c in conditions:
-        standardized = None
-        c_lower = c.lower().replace("_", " ").replace("-", " ")
-        for standard_label in condition_values.keys():
-            if c_lower == standard_label.lower():
-                standardized = standard_label
-                break
-        if standardized:
-            standardized_conditions.append(standardized)
-        else:
-            invalid_conditions.append(c)
+#     for c in conditions:
+#         standardized = None
+#         c_lower = c.lower().replace("_", " ").replace("-", " ")
+#         for standard_label in condition_values.keys():
+#             if c_lower == standard_label.lower():
+#                 standardized = standard_label
+#                 break
+#         if standardized:
+#             standardized_conditions.append(standardized)
+#         else:
+#             invalid_conditions.append(c)
 
-    valid_conditions = [c for c in standardized_conditions if c in condition_values]
+#     valid_conditions = [c for c in standardized_conditions if c in condition_values]
 
-    # Logging invalid conditions
-    if invalid_conditions:
-        logger.warning(
-            f"Invalid or unrecognized condition labels: {invalid_conditions}"
-        )
+#     # Logging invalid conditions
+#     if invalid_conditions:
+#         logger.warning(
+#             f"Invalid or unrecognized condition labels: {invalid_conditions}"
+#         )
 
-    if not valid_conditions:
+#     if not valid_conditions:
+#         return "Insufficient data"
+
+#     # Proceed with the calculation using standardized_conditions
+#     total_value = sum(condition_values[c] for c in valid_conditions)
+#     average_value = total_value / len(valid_conditions)
+
+#     condition_counts = {c: valid_conditions.count(c) for c in set(valid_conditions)}
+#     distribution = {
+#         c: count / len(valid_conditions) for c, count in condition_counts.items()
+#     }
+
+#     below_average_count = sum(1 for c in valid_conditions if condition_values[c] < 3)
+
+#     if average_value >= 4.5:
+#         rating = "Excellent"
+#     elif 3.5 <= average_value < 4.5:
+#         rating = "Good"
+#     elif 2.5 <= average_value < 3.5:
+#         rating = "Average"
+#     elif 1.5 <= average_value < 2.5:
+#         rating = "Below Average"
+#     else:
+#         rating = "Poor"
+
+#     condition_percentages = {
+#         c: (count / len(valid_conditions)) * 100
+#         for c, count in condition_counts.items()
+#     }
+
+#     result = {
+#         "overall_condition_label": rating,
+#         "average_score": round(average_value, 2),
+#         "distribution": distribution,
+#         "condition_distribution": condition_percentages,
+#         "areas_of_concern": below_average_count,
+#         "confidence": (
+#             "High"
+#             if len(valid_conditions) > 20
+#             else "Medium" if len(valid_conditions) > 10 else "Low"
+#         ),
+#     }
+
+#     # Detailed explanation remains unchanged
+#     explanation = f"""
+# Detailed calculation of overall property condition:
+
+# 1. Total number of valid assessments: {len(valid_conditions)}
+
+# 2. Condition counts:
+# {chr(10).join(f"   - {cond}: {count}" for cond, count in condition_counts.items())}
+
+# 3. Calculation of average score:
+#    - Each condition is assigned a value: Excellent (5), Above Average (4), Average (3), Below Average (2), Poor (1)
+#    - Total value: {total_value} (sum of all condition values)
+#    - Average score: {total_value} / {len(valid_conditions)} = {average_value:.2f}
+
+# 4. Distribution of conditions:
+# {chr(10).join(f"   - {cond}: {dist:.2%}" for cond, dist in distribution.items())}
+
+# 5. Areas of concern (conditions below average): {below_average_count}
+
+# 6. Overall rating determination:
+#    - Excellent: 4.5 and above
+#    - Good: 3.5 to 4.49
+#    - Average: 2.5 to 3.49
+#    - Below Average: 1.5 to 2.49
+#    - Poor: Below 1.5
+
+#    Based on the average score of {average_value:.2f}, the overall rating is: {rating}
+
+# 7. Confidence level:
+#    - High: More than 20 assessments
+#    - Medium: 11 to 20 assessments
+#    - Low: 10 or fewer assessments
+
+#    Based on {len(valid_conditions)} assessments, the confidence level is: {result['confidence']}
+# """
+
+#     result["explanation"] = explanation
+#     return result
+
+
+def analyze_property_condition(condition_labels, condition_scores):
+    if not condition_scores:
         return "Insufficient data"
 
-    # Proceed with the calculation using standardized_conditions
-    total_value = sum(condition_values[c] for c in valid_conditions)
-    average_value = total_value / len(valid_conditions)
+    average_score = sum(condition_scores) / len(condition_scores)
 
-    condition_counts = {c: valid_conditions.count(c) for c in set(valid_conditions)}
-    distribution = {
-        c: count / len(valid_conditions) for c, count in condition_counts.items()
-    }
-
-    below_average_count = sum(1 for c in valid_conditions if condition_values[c] < 3)
-
-    if average_value >= 4.5:
+    # Determine overall condition label based on average score
+    if average_score >= 80:
         rating = "Excellent"
-    elif 3.5 <= average_value < 4.5:
-        rating = "Good"
-    elif 2.5 <= average_value < 3.5:
+    elif 60 <= average_score < 80:
+        rating = "Above Average"
+    elif 40 <= average_score < 60:
         rating = "Average"
-    elif 1.5 <= average_value < 2.5:
+    elif 20 <= average_score < 40:
         rating = "Below Average"
     else:
         rating = "Poor"
 
-    condition_percentages = {
-        c: (count / len(valid_conditions)) * 100
-        for c, count in condition_counts.items()
+    # Calculate distribution of condition labels
+    from collections import Counter
+
+    label_counts = Counter(condition_labels)
+    total_labels = len(condition_labels)
+    label_distribution = {
+        label: count / total_labels for label, count in label_counts.items()
     }
+
+    areas_of_concern = sum(1 for score in condition_scores if score < 40)
 
     result = {
         "overall_condition_label": rating,
-        "average_score": round(average_value, 2),
-        "distribution": distribution,
-        "condition_distribution": condition_percentages,
-        "areas_of_concern": below_average_count,
+        "average_score": round(average_score, 2),
+        "label_distribution": label_distribution,
+        "areas_of_concern": areas_of_concern,
         "confidence": (
             "High"
-            if len(valid_conditions) > 20
-            else "Medium" if len(valid_conditions) > 10 else "Low"
+            if len(condition_scores) > 20
+            else "Medium" if len(condition_scores) > 10 else "Low"
         ),
     }
 
-    # Detailed explanation remains unchanged
+    # Generate detailed explanation
     explanation = f"""
 Detailed calculation of overall property condition:
 
-1. Total number of valid assessments: {len(valid_conditions)}
+1. Total number of valid assessments: {len(condition_scores)}
 
-2. Condition counts:
-{chr(10).join(f"   - {cond}: {count}" for cond, count in condition_counts.items())}
+2. Average score: {average_score:.2f}
 
-3. Calculation of average score:
-   - Each condition is assigned a value: Excellent (5), Above Average (4), Average (3), Below Average (2), Poor (1)
-   - Total value: {total_value} (sum of all condition values)
-   - Average score: {total_value} / {len(valid_conditions)} = {average_value:.2f}
+3. Distribution of condition labels:
+{chr(10).join(f"   - {label}: {dist:.2%}" for label, dist in label_distribution.items())}
 
-4. Distribution of conditions:
-{chr(10).join(f"   - {cond}: {dist:.2%}" for cond, dist in distribution.items())}
+4. Areas of concern (scores below 40%): {areas_of_concern}
 
-5. Areas of concern (conditions below average): {below_average_count}
+5. Overall rating determination:
+   - Excellent: 80% and above
+   - Above Average: 60% to 79%
+   - Average: 40% to 59%
+   - Below Average: 20% to 39%
+   - Poor: Below 20%
 
-6. Overall rating determination:
-   - Excellent: 4.5 and above
-   - Good: 3.5 to 4.49
-   - Average: 2.5 to 3.49
-   - Below Average: 1.5 to 2.49
-   - Poor: Below 1.5
+   Based on the average score of {average_score:.2f}, the overall rating is: {rating}
 
-   Based on the average score of {average_value:.2f}, the overall rating is: {rating}
-
-7. Confidence level:
+6. Confidence level:
    - High: More than 20 assessments
    - Medium: 11 to 20 assessments
    - Low: 10 or fewer assessments
 
-   Based on {len(valid_conditions)} assessments, the confidence level is: {result['confidence']}
+   Based on {len(condition_scores)} assessments, the confidence level is: {result['confidence']}
 """
 
     result["explanation"] = explanation

@@ -1,7 +1,7 @@
 import ssl
 
 import aiohttp
-from asgiref.sync import async_to_sync
+from asgiref.sync import async_to_sync, sync_to_async
 from celery import shared_task
 from channels.layers import get_channel_layer
 from decouple import config
@@ -31,6 +31,8 @@ async def analyze_property_async(property_id, task_id, user_id, job_id):
     channel_layer = get_channel_layer()
     property_instance = await Property.objects.aget(id=property_id)
     task_instance = await AnalysisTask.objects.aget(id=task_id)
+
+    # await sync_to_async(clear_property_data)(property_instance)
 
     async def update_progress(stage, message, progress):
         task_instance.status = stage

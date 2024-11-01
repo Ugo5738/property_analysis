@@ -44,6 +44,7 @@ class PropertyImage(models.Model):
         max_length=100, blank=True
     )  # e.g., "living room", "master bedroom"
     condition_label = models.CharField(max_length=100, blank=True)
+    condition_score = models.IntegerField(null=True, blank=True)
     reasoning = models.TextField(blank=True)
     embedding = models.JSONField(null=True, editable=False)
     similarity_scores = models.JSONField(null=True, blank=True)

@@ -390,3 +390,250 @@ async def group_images_by_category(image_ids, categories):
 
     # Remove empty categories
     return {k: v for k, v in grouped_images.items() if v}
+
+
+{
+    "property_url": "https://www.rightmove.co.uk/properties/146759381",
+    "stages": {
+        "initial_categorization": [
+            {"category": "internal", "details": {"room_type": "kitchen"}},
+            {"category": "internal", "details": {"room_type": "bedroom"}},
+            {"category": "internal", "details": {"room_type": "living room"}},
+            {"category": "external", "details": {"exterior_type": "balcony"}},
+            {"category": "internal", "details": {"room_type": "bathroom"}},
+            {"category": "internal", "details": {"room_type": "guest bedroom"}},
+            {"category": "external", "details": {"exterior_type": "other"}},
+            {"category": "internal", "details": {"room_type": "shower room"}},
+            {"category": "internal", "details": {"room_type": "living room"}},
+            {"category": "external", "details": {"exterior_type": "other"}},
+        ],
+        "grouped_images": {
+            "internal": {
+                "kitchen_space": [11],
+                "bedroom_space": [12, 16],
+                "living_space": [13, 19],
+                "bathroom_space": [15, 18],
+            },
+            "external": {"front_garden_space": [14, 17, 20]},
+        },
+        "merged_images": {
+            "internal_kitchen_space": [
+                "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_6_4VKJVme.jpg"
+            ],
+            "internal_bedroom_space": [
+                "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_7_0rzDkoR.jpg"
+            ],
+            "internal_living_space": [
+                "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_8_eusKrht.jpg"
+            ],
+            "external_front_garden_space": [
+                "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_9_tBM90gZ.jpg"
+            ],
+            "internal_bathroom_space": [
+                "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_10_oTHSAie.jpg"
+            ],
+        },
+        "detailed_analysis": {
+            "internal_kitchen_space": [
+                {
+                    "image_number": 1,
+                    "condition_label": "Excellent",
+                    "condition_score": 85,
+                    "reasoning": "The kitchen in this image has a modern design with high-end, sleek finishes and fixtures. The space is well-lit, featuring stylish cabinetry and a cohesive color palette. The flooring appears pristine, with no visible signs of wear or damage, aligning with the excellent condition criteria.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_0_yMYh5A6.jpg",
+                    "image_id": 11,
+                    "similarities": {
+                        "poor": 0.788019910031569,
+                        "above_average": 0.8397828769989097,
+                        "below_average": 0.8510994060551111,
+                        "excellent": 0.8644751694321945,
+                    },
+                }
+            ],
+            "internal_bedroom_space": [
+                {
+                    "image_number": 1,
+                    "condition_label": "Excellent",
+                    "condition_score": 90,
+                    "reasoning": "The room is highly stylish with a contemporary design, cohesive color scheme, and modern furnishings. It is well-maintained with no visible signs of wear or damage, fitting the 'Excellent' category.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_1_BC3NVVP.jpg",
+                    "image_id": 12,
+                    "similarities": {
+                        "above_average": 0.8705994753723505,
+                        "below_average": 0.8367324696245676,
+                        "excellent": 0.8549990130109195,
+                        "poor": 0.7822495579066492,
+                    },
+                },
+                {
+                    "image_number": 2,
+                    "condition_label": "Excellent",
+                    "condition_score": 85,
+                    "reasoning": "The room is in pristine condition with high-quality finishes and fixtures. It has a minimalist yet cohesive design with no visible wear or maintenance issues, aligning with the 'Excellent' category.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_5_MoSKcfv.jpg",
+                    "image_id": 16,
+                    "similarities": {
+                        "above_average": 0.8436932680445176,
+                        "below_average": 0.8088104820156155,
+                        "excellent": 0.7573051124512092,
+                        "poor": 0.8071351835975034,
+                    },
+                },
+            ],
+            "internal_living_space": [
+                {
+                    "image_number": 1,
+                    "condition_label": "Excellent",
+                    "condition_score": 90,
+                    "reasoning": "The space features modern finishes, stylish furniture, and a cohesive design. It presents a high level of upkeep with immaculate condition and high-quality materials, consistent with an 'Excellent' standard.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_2_Lkety0p.jpg",
+                    "image_id": 13,
+                    "similarities": {
+                        "poor": 0.8290703916161166,
+                        "above_average": 0.8520500240303333,
+                        "below_average": 0.8746171735962347,
+                        "excellent": 0.8800696545342208,
+                    },
+                },
+                {
+                    "image_number": 2,
+                    "condition_label": "Excellent",
+                    "condition_score": 88,
+                    "reasoning": "This room also showcases high-end finishes, contemporary decor, and a cohesive color scheme. The space is well-maintained with no visible wear, aligning well with the 'Excellent' criteria.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_8_3sh64Rg.jpg",
+                    "image_id": 19,
+                    "similarities": {
+                        "poor": 0.7635194461068455,
+                        "above_average": 0.8032604204483211,
+                        "below_average": 0.8058883394713208,
+                        "excellent": 0.8422207050235084,
+                    },
+                },
+            ],
+            "external_front_garden_space": [
+                {
+                    "image_number": 1,
+                    "condition_label": "Excellent",
+                    "condition_score": 85,
+                    "reasoning": "Impeccable maintenance with a well-maintained balcony, beautiful views, and stylish furniture that contributes to a high-end appearance.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_3_Zn8kRiL.jpg",
+                    "image_id": 14,
+                    "similarities": {
+                        "above_average": 0.691769454432527,
+                        "below_average": 0.6588049612303928,
+                        "excellent": 0.6811463126466217,
+                        "poor": 0.6335610979692958,
+                    },
+                },
+                {
+                    "image_number": 2,
+                    "condition_label": "Excellent",
+                    "condition_score": 85,
+                    "reasoning": "Modern building with high-quality materials and design. The structure is in excellent condition, with no visible signs of wear.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_6_HYVEkxA.jpg",
+                    "image_id": 17,
+                    "similarities": {
+                        "above_average": 0.7222850364561122,
+                        "below_average": 0.7080352111563168,
+                        "excellent": 0.7618229421832505,
+                        "poor": 0.7256076322396752,
+                    },
+                },
+                {
+                    "image_number": 3,
+                    "condition_label": "Above Average",
+                    "condition_score": 75,
+                    "reasoning": "Well-maintained outdoor space with tidy landscaping and modern building appearance, but less pristine than the previous images.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_9_sh04Eky.jpg",
+                    "image_id": 20,
+                    "similarities": {
+                        "above_average": 0.6276789102724637,
+                        "below_average": 0.60122656704489,
+                        "excellent": 0.6875398556606297,
+                        "poor": 0.6438176032270172,
+                    },
+                },
+            ],
+            "internal_bathroom_space": [
+                {
+                    "image_number": 1,
+                    "condition_label": "Excellent",
+                    "condition_score": 90,
+                    "reasoning": "The bathroom is very well-maintained with high-end, modern finishes and fixtures. The design is cohesive, featuring a sleek, contemporary appearance. The structural elements are pristine, and the space is immaculately presented, aligning closely with the 'Excellent' examples.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_4_tyBWf7J.jpg",
+                    "image_id": 15,
+                    "similarities": {
+                        "above_average": 0.8548060581058172,
+                        "below_average": 0.8391028783028338,
+                        "excellent": 0.8475050993429631,
+                        "poor": 0.8238536004443024,
+                    },
+                },
+                {
+                    "image_number": 2,
+                    "condition_label": "Excellent",
+                    "condition_score": 85,
+                    "reasoning": "The shower area is impeccably maintained with modern fixtures and a clean aesthetic. The space is well-designed, featuring high-quality materials and excellent presentation. It aligns closely with the 'Excellent' criteria, though with slightly less decorative flair compared to image 1.",
+                    "image_url": "https://propertyanalysisstorage.s3.amazonaws.com/media/property_images/property_1_image_7_Oa1sVBd.jpg",
+                    "image_id": 18,
+                    "similarities": {
+                        "above_average": 0.8560211801849688,
+                        "below_average": 0.8175661678896685,
+                        "excellent": 0.8327170790304153,
+                        "poor": 0.8184424021510757,
+                    },
+                },
+            ],
+        },
+        "overall_condition": {
+            "overall_condition_label": "Excellent",
+            "average_score": 85.8,
+            "label_distribution": {"Excellent": 0.9, "Above Average": 0.1},
+            "areas_of_concern": 0,
+            "confidence": "Low",
+            "explanation": "\nDetailed calculation of overall property condition:\n\n1. Total number of valid assessments: 10\n\n2. Average score: 85.80\n\n3. Distribution of condition labels:\n   - Excellent: 90.00%\n   - Above Average: 10.00%\n\n4. Areas of concern (scores below 40%): 0\n\n5. Overall rating determination:\n   - Excellent: 80% and above\n   - Above Average: 60% to 79%\n   - Average: 40% to 59%\n   - Below Average: 20% to 39%\n   - Poor: Below 20%\n\n   Based on the average score of 85.80, the overall rating is: Excellent\n\n6. Confidence level:\n   - High: More than 20 assessments\n   - Medium: 11 to 20 assessments\n   - Low: 10 or fewer assessments\n\n   Based on 10 assessments, the confidence level is: Low\n",
+        },
+    },
+    "Image_Analysis": {},
+}
+
+
+{
+    "property_url": "https://www.rightmove.co.uk/properties/154166495",
+    "stages": {
+        "initial_categorization": [
+            {"category": "internal", "details": {"room_type": "hallway"}},
+            {"category": "internal", "details": {"room_type": "bathroom"}},
+            {"category": "internal", "details": {"room_type": "bedroom"}},
+            {"category": "internal", "details": {"room_type": "kitchen"}},
+            {"category": "internal", "details": {"room_type": "dining room"}},
+            {"category": "internal", "details": {"room_type": "hallway"}},
+            {"category": "internal", "details": {"room_type": "bedroom"}},
+        ],
+        "grouped_images": {
+            "internal": {
+                "living_space": [1, 5, 6],
+                "bathroom_space": [2],
+                "bedroom_space": [3, 7],
+                "kitchen_space": [4],
+            }
+        },
+        "merged_images": {
+            "internal_living_space": [
+                "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_1_lqLWiex.jpg"
+            ],
+            "internal_bathroom_space": [
+                "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_2_zb9ZqdT.jpg"
+            ],
+            "internal_bedroom_space": [
+                "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_3_hFNDkAz.jpg"
+            ],
+            "internal_kitchen_space": [
+                "https://propertyanalysisstorage.s3.amazonaws.com/media/merged_property_images/merged_image_4_jhDhw8T.jpg"
+            ],
+        },
+        "detailed_analysis": {},
+        "overall_condition": "Insufficient data",
+    },
+    "Image_Analysis": {},
+}

@@ -4,25 +4,26 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: sh -c "python manage.py makemigrations && python manage.py migrate && daphne property_analysis.asgi:application -b 0.0.0.0 -p 8000"
+    command: >
+      sh -c "
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        daphne property_analysis.asgi:application -b 0.0.0.0 -p 8000
+      "
     volumes:
       - .:/code
     ports:
       - '8000:8000'
-    networks:
-      default:
-        aliases:
-          - analysis-app
     depends_on:
       - redis
-    
+    networks:
+      - default
+
   redis:
     container_name: analysis-app-redis
     image: redis:latest
     networks:
-      default:
-        aliases:
-          - analysis-app-redis
+      - default
 
   celery:
     container_name: analysis-app-celery
@@ -42,8 +43,10 @@ services:
       - .:/code
     depends_on:
       - redis
+    networks:
+      - default
     
 networks:
   default:
     name: shared_network
-    external: True
+    external: true

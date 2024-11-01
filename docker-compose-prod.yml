@@ -3,7 +3,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: sh -c "python manage.py makemigrations && python manage.py migrate && daphne property_analysis.asgi:application -b 0.0.0.0 -p 8000"
+    command: >
+      sh -c "
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        daphne property_analysis.asgi:application -b 0.0.0.0 -p 8000
+      "
     volumes:
       - .:/code
     expose:
