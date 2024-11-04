@@ -690,6 +690,7 @@ def analyze_property_condition(condition_labels, condition_scores):
         "overall_condition_label": rating,
         "average_score": round(average_score, 2),
         "label_distribution": label_distribution,
+        "total_assessments": total_labels,  # Add this line
         "areas_of_concern": areas_of_concern,
         "confidence": (
             "High"
