@@ -580,11 +580,10 @@ When categorizing, compare the image to both these criteria and the provided sam
 
 When categorizing, after assigning a condition label, assign a numeric value between 0 and 100% corresponding to the condition, where:
 
-- Excellent falls between 80 - 100%
-- Above Average falls between 60 - 80%
-- Average falls between 40 - 60%
-- Below Average falls between 20 - 40%
-- Poor falls between 0 - 20%
+- Excellent falls between 76 - 100%
+- Above Average falls between 51 - 75%
+- Below Average falls between 26 - 50%
+- Poor falls between 0 - 25%
 
 Ensure your numeric score accurately reflects the condition of the image based on the criteria and examples provided.
 
@@ -620,3 +619,6 @@ Provide your analysis in the following JSON format:
   ]
 }
 """
+
+
+# make the split between the building structure prompt vs garden related prompt to 50/50 weighting

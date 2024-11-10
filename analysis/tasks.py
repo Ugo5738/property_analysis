@@ -20,7 +20,7 @@ from utils.property_analysis import process_property
 logger = configure_logger(__name__)
 
 
-@shared_task
+@shared_task()
 # @shared_task(name="property_analysis.tasks.analyze_property", queue="analysis_queue")
 def analyze_property(property_id, task_id, user_id, job_id):
     async_to_sync(analyze_property_async)(property_id, task_id, user_id, job_id)

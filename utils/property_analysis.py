@@ -1,11 +1,8 @@
-import asyncio
 import base64
 import json
-from collections import defaultdict
+from collections import Counter
 
-import clip
 import numpy as np
-import torch
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 from sklearn.metrics.pairwise import cosine_similarity
@@ -90,7 +87,7 @@ async def process_property(property_url, image_ids, update_progress):
         print("Done updating...")
 
         property_condition = analyze_property_condition(
-            all_condition_labels, all_condition_scores
+            all_condition_labels, all_condition_scores, property_instance.bedrooms
         )
         results["stages"]["overall_condition"] = property_condition
         logger.info(f"This is the final results: {results}")
@@ -354,6 +351,7 @@ async def analyze_merged_images(property_instance, results, update_step_progress
         MergedPropertyImage.objects.filter(property=property_instance)
     )
     total_analyses = len(merged_images)
+
     all_condition_scores = []
     all_condition_labels = []
 
@@ -400,7 +398,7 @@ async def analyze_merged_images(property_instance, results, update_step_progress
                 )
                 continue
             result = structured_output["response_content"]
-            print("This is the result I want to check: ", result)
+            # print("This is the result I want to check: ", result)
         except Exception as e:
             logger.error(f"Exception in analyze_single_image: {str(e)}")
             continue
@@ -449,14 +447,6 @@ async def analyze_merged_images(property_instance, results, update_step_progress
                         )
                         continue
 
-                    # group_images = await sync_to_async(list)(
-                    #     PropertyImage.objects.filter(
-                    #         property=property_instance,
-                    #         main_category=merged_image.main_category,
-                    #         sub_category=merged_image.sub_category,
-                    #     )
-                    # )
-                    # for analysis, img in zip(image_analyses, group_images):
                     condition_label_raw = analysis.get("condition", "Average")
                     condition_label = standardize_condition_label(condition_label_raw)
                     condition_score = int(analysis.get("condition_score", 50))
@@ -541,163 +531,89 @@ async def analyze_merged_images(property_instance, results, update_step_progress
     return all_condition_labels, all_condition_scores
 
 
-# def analyze_property_condition(conditions):
-#     # Standardized condition labels
-#     condition_values = {
-#         "Excellent": 5,
-#         "Above Average": 4,
-#         "Average": 3,
-#         "Below Average": 2,
-#         "Poor": 1,
-#     }
-#     # Map any variations to standardized labels
-#     standardized_conditions = []
-#     invalid_conditions = []
+def get_confidence_level(total_assessments, bedrooms):
+    thresholds = {
+        0: {"High": 4, "Medium": 2},  # Studio
+        1: {"High": 6, "Medium": 4},
+        2: {"High": 8, "Medium": 6},
+        3: {"High": 10, "Medium": 8},
+        4: {"High": 12, "Medium": 10},
+        5: {"High": 15, "Medium": 12},  # 5+
+    }
 
-#     for c in conditions:
-#         standardized = None
-#         c_lower = c.lower().replace("_", " ").replace("-", " ")
-#         for standard_label in condition_values.keys():
-#             if c_lower == standard_label.lower():
-#                 standardized = standard_label
-#                 break
-#         if standardized:
-#             standardized_conditions.append(standardized)
-#         else:
-#             invalid_conditions.append(c)
+    if bedrooms is None:
+        # Default thresholds
+        if total_assessments > 20:
+            return "High"
+        elif total_assessments > 10:
+            return "Medium"
+        else:
+            return "Low"
+    else:
+        if bedrooms >= 5:
+            bedroom_key = 5
+        else:
+            bedroom_key = bedrooms
 
-#     valid_conditions = [c for c in standardized_conditions if c in condition_values]
-
-#     # Logging invalid conditions
-#     if invalid_conditions:
-#         logger.warning(
-#             f"Invalid or unrecognized condition labels: {invalid_conditions}"
-#         )
-
-#     if not valid_conditions:
-#         return "Insufficient data"
-
-#     # Proceed with the calculation using standardized_conditions
-#     total_value = sum(condition_values[c] for c in valid_conditions)
-#     average_value = total_value / len(valid_conditions)
-
-#     condition_counts = {c: valid_conditions.count(c) for c in set(valid_conditions)}
-#     distribution = {
-#         c: count / len(valid_conditions) for c, count in condition_counts.items()
-#     }
-
-#     below_average_count = sum(1 for c in valid_conditions if condition_values[c] < 3)
-
-#     if average_value >= 4.5:
-#         rating = "Excellent"
-#     elif 3.5 <= average_value < 4.5:
-#         rating = "Good"
-#     elif 2.5 <= average_value < 3.5:
-#         rating = "Average"
-#     elif 1.5 <= average_value < 2.5:
-#         rating = "Below Average"
-#     else:
-#         rating = "Poor"
-
-#     condition_percentages = {
-#         c: (count / len(valid_conditions)) * 100
-#         for c, count in condition_counts.items()
-#     }
-
-#     result = {
-#         "overall_condition_label": rating,
-#         "average_score": round(average_value, 2),
-#         "distribution": distribution,
-#         "condition_distribution": condition_percentages,
-#         "areas_of_concern": below_average_count,
-#         "confidence": (
-#             "High"
-#             if len(valid_conditions) > 20
-#             else "Medium" if len(valid_conditions) > 10 else "Low"
-#         ),
-#     }
-
-#     # Detailed explanation remains unchanged
-#     explanation = f"""
-# Detailed calculation of overall property condition:
-
-# 1. Total number of valid assessments: {len(valid_conditions)}
-
-# 2. Condition counts:
-# {chr(10).join(f"   - {cond}: {count}" for cond, count in condition_counts.items())}
-
-# 3. Calculation of average score:
-#    - Each condition is assigned a value: Excellent (5), Above Average (4), Average (3), Below Average (2), Poor (1)
-#    - Total value: {total_value} (sum of all condition values)
-#    - Average score: {total_value} / {len(valid_conditions)} = {average_value:.2f}
-
-# 4. Distribution of conditions:
-# {chr(10).join(f"   - {cond}: {dist:.2%}" for cond, dist in distribution.items())}
-
-# 5. Areas of concern (conditions below average): {below_average_count}
-
-# 6. Overall rating determination:
-#    - Excellent: 4.5 and above
-#    - Good: 3.5 to 4.49
-#    - Average: 2.5 to 3.49
-#    - Below Average: 1.5 to 2.49
-#    - Poor: Below 1.5
-
-#    Based on the average score of {average_value:.2f}, the overall rating is: {rating}
-
-# 7. Confidence level:
-#    - High: More than 20 assessments
-#    - Medium: 11 to 20 assessments
-#    - Low: 10 or fewer assessments
-
-#    Based on {len(valid_conditions)} assessments, the confidence level is: {result['confidence']}
-# """
-
-#     result["explanation"] = explanation
-#     return result
+        bedroom_thresholds = thresholds.get(bedroom_key)
+        if total_assessments >= bedroom_thresholds["High"]:
+            return "High"
+        elif total_assessments >= bedroom_thresholds["Medium"]:
+            return "Medium"
+        else:
+            return "Low"
 
 
-def analyze_property_condition(condition_labels, condition_scores):
+def analyze_property_condition(condition_labels, condition_scores, bedrooms):
     if not condition_scores:
         return "Insufficient data"
 
     average_score = sum(condition_scores) / len(condition_scores)
 
     # Determine overall condition label based on average score
-    if average_score >= 80:
+    if average_score >= 75.01:
         rating = "Excellent"
-    elif 60 <= average_score < 80:
+    elif 50.01 <= average_score < 75:
         rating = "Above Average"
-    elif 40 <= average_score < 60:
-        rating = "Average"
-    elif 20 <= average_score < 40:
+    # elif 40 <= average_score < 60:
+    #     rating = "Average"
+    elif 25.01 <= average_score < 50:
         rating = "Below Average"
     else:
         rating = "Poor"
 
     # Calculate distribution of condition labels
-    from collections import Counter
-
     label_counts = Counter(condition_labels)
     total_labels = len(condition_labels)
-    label_distribution = {
-        label: count / total_labels for label, count in label_counts.items()
-    }
+    if total_labels == 0:
+        label_distribution = {}
+    else:
+        label_distribution = {
+            label: count / total_labels for label, count in label_counts.items()
+        }
 
     areas_of_concern = sum(1 for score in condition_scores if score < 40)
+    total_assessments = len(condition_scores)
 
-    result = {
-        "overall_condition_label": rating,
-        "average_score": round(average_score, 2),
-        "label_distribution": label_distribution,
-        "total_assessments": total_labels,  # Add this line
-        "areas_of_concern": areas_of_concern,
-        "confidence": (
-            "High"
-            if len(condition_scores) > 20
-            else "Medium" if len(condition_scores) > 10 else "Low"
-        ),
+    # Get confidence level based on number of bedrooms
+    confidence = get_confidence_level(total_assessments, bedrooms)
+
+    # Fetch thresholds for explanation
+    thresholds = {
+        0: {
+            "High": 4,
+            "Medium": 2,
+        },  # Studio ==> Review this because it could be a 1 bed
+        1: {"High": 6, "Medium": 4},
+        2: {"High": 8, "Medium": 6},
+        3: {"High": 10, "Medium": 8},
+        4: {"High": 12, "Medium": 10},
+        5: {"High": 15, "Medium": 12},  # 5+
     }
+    if bedrooms is None or bedrooms not in thresholds:
+        bedroom_thresholds = {"High": "N/A", "Medium": "N/A"}
+    else:
+        bedroom_thresholds = thresholds.get(bedrooms if bedrooms < 5 else 5)
 
     # Generate detailed explanation
     explanation = f"""
@@ -721,13 +637,28 @@ Detailed calculation of overall property condition:
 
    Based on the average score of {average_score:.2f}, the overall rating is: {rating}
 
-6. Confidence level:
-   - High: More than 20 assessments
-   - Medium: 11 to 20 assessments
-   - Low: 10 or fewer assessments
+6. Confidence level based on number of bedrooms ({bedrooms if bedrooms is not None else 'Unknown'} bedrooms):
+   - High: {bedroom_thresholds['High']} or more assessments
+   - Medium: {bedroom_thresholds['Medium']} to {int(bedroom_thresholds['High']) - 1 if bedroom_thresholds['High'] != 'N/A' else 'N/A'} assessments
+   - Low: Fewer than {bedroom_thresholds['Medium']} assessments
 
-   Based on {len(condition_scores)} assessments, the confidence level is: {result['confidence']}
+   Based on {len(condition_scores)} assessments, the confidence level is: {confidence}
 """
 
-    result["explanation"] = explanation
+    result = {
+        "overall_condition_label": rating,
+        "average_score": round(average_score, 2),
+        "label_distribution": label_distribution,
+        "total_assessments": total_assessments,  # Add this line
+        "areas_of_concern": areas_of_concern,
+        "confidence": confidence,
+        "explanation": explanation,
+    }
     return result
+
+
+# might need to work on studio, models.py, and analysis
+
+# if the bedroom is 1 and there is a mention of studio in the description then the property type would be flat, apartment, or studio
+
+# show what is happening in the backend when the scraping is going on

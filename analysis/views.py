@@ -139,6 +139,16 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
         result = {
             "property_url": property_instance.url,
+            "address": property_instance.address,
+            "price": str(property_instance.price),
+            "bedrooms": property_instance.bedrooms,
+            "bathrooms": property_instance.bathrooms,
+            "size": property_instance.size,
+            "house_type": property_instance.house_type,
+            "agent": property_instance.agent,
+            "description": property_instance.description,
+            "image_urls": property_instance.image_urls,
+            "floorplan_urls": property_instance.floorplan_urls,
             "overall_analysis": property_instance.overall_analysis,
             # 'detailed_analysis': property_instance.detailed_analysis,
             "stages": task.stage_progress or {},
