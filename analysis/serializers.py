@@ -26,14 +26,23 @@ class PropertySerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "url",
+            "address",
+            "price",
+            "bedrooms",
+            "bathrooms",
+            "size",
+            "house_type",
+            "agent",
+            "description",
+            "floorplan_urls",
             "overall_condition",
             "detailed_analysis",
             "failed_downloads",
             "image_urls",
             "overall_analysis",
-            "images",
             "created_at",
             "updated_at",
+            "images",
         ]
 
 

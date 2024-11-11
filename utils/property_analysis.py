@@ -575,8 +575,6 @@ def analyze_property_condition(condition_labels, condition_scores, bedrooms):
         rating = "Excellent"
     elif 50.01 <= average_score < 75:
         rating = "Above Average"
-    # elif 40 <= average_score < 60:
-    #     rating = "Average"
     elif 25.01 <= average_score < 50:
         rating = "Below Average"
     else:
@@ -629,11 +627,10 @@ Detailed calculation of overall property condition:
 4. Areas of concern (scores below 40%): {areas_of_concern}
 
 5. Overall rating determination:
-   - Excellent: 80% and above
-   - Above Average: 60% to 79%
-   - Average: 40% to 59%
-   - Below Average: 20% to 39%
-   - Poor: Below 20%
+   - Excellent: 75.01% and above
+   - Above Average: 50.01% to 75%
+   - Below Average: 25.01% to 50%
+   - Poor: Below 25%
 
    Based on the average score of {average_score:.2f}, the overall rating is: {rating}
 
