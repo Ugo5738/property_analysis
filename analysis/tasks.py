@@ -1,7 +1,7 @@
 import ssl
 
 import aiohttp
-from asgiref.sync import async_to_sync, sync_to_async
+from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
 from decouple import config
@@ -15,6 +15,7 @@ from analysis.models import (
 )
 from property_analysis.config.logging_config import configure_logger
 from utils.image_processing import download_images
+from utils.openai_analysis import get_openai_chat_response
 from utils.property_analysis import process_property
 
 logger = configure_logger(__name__)
@@ -22,11 +23,13 @@ logger = configure_logger(__name__)
 
 @shared_task()
 # @shared_task(name="property_analysis.tasks.analyze_property", queue="analysis_queue")
-def analyze_property(property_id, task_id, user_id, job_id):
-    async_to_sync(analyze_property_async)(property_id, task_id, user_id, job_id)
+def analyze_property(property_id, task_id, user_phone_number, job_id):
+    async_to_sync(analyze_property_async)(
+        property_id, task_id, user_phone_number, job_id
+    )
 
 
-async def analyze_property_async(property_id, task_id, user_id, job_id):
+async def analyze_property_async(property_id, task_id, user_phone_number, job_id):
     logger.info("Analyze Property initiated...")
     channel_layer = get_channel_layer()
     property_instance = await Property.objects.aget(id=property_id)
@@ -41,7 +44,7 @@ async def analyze_property_async(property_id, task_id, user_id, job_id):
         task_instance.stage_progress[stage] = progress
         await task_instance.asave()
         await channel_layer.group_send(
-            f"analysis_{user_id}",
+            f"analysis_{user_phone_number}",
             {
                 "type": "analysis_progress",
                 "message": {"stage": stage, "message": message, "progress": progress},
@@ -97,8 +100,33 @@ async def analyze_property_async(property_id, task_id, user_id, job_id):
         property_instance.house_type = scraped_data.get("house_type")
         property_instance.agent = scraped_data.get("agent")
         property_instance.description = scraped_data.get("description")
+        property_instance.time_on_market = scraped_data.get("time_on_market")
+        property_instance.features = scraped_data.get("features")
+        property_instance.listing_type = scraped_data.get("listing_type")
         property_instance.image_urls = scraped_data.get("images")
         property_instance.floorplan_urls = scraped_data.get("floorplans")
+        await property_instance.asave()
+
+        # Process description and features using the grok function to create reviewed_description
+        instruction = (
+            "Please improve and summarize the following property description and key features, "
+            "and produce a reviewed description suitable for property buyers."
+        )
+        message = f"Description: {property_instance.description}\nFeatures: {property_instance.features}"
+
+        prompt_format = {
+            "type": "object",
+            "properties": {
+                "reviewed_description": {"type": "string"},
+            },
+            "required": ["reviewed_description"],
+            "additionalProperties": False,
+        }
+
+        reviewed_data = await get_openai_chat_response(
+            instruction, message, prompt_format
+        )
+        property_instance.reviewed_description = reviewed_data["reviewed_description"]
         await property_instance.asave()
 
         image_ids, failed_downloads = await download_images(

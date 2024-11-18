@@ -646,7 +646,7 @@ Detailed calculation of overall property condition:
         "overall_condition_label": rating,
         "average_score": round(average_score, 2),
         "label_distribution": label_distribution,
-        "total_assessments": total_assessments,  # Add this line
+        "total_assessments": total_assessments,
         "areas_of_concern": areas_of_concern,
         "confidence": confidence,
         "explanation": explanation,
@@ -657,5 +657,3 @@ Detailed calculation of overall property condition:
 # might need to work on studio, models.py, and analysis
 
 # if the bedroom is 1 and there is a mention of studio in the description then the property type would be flat, apartment, or studio
-
-# show what is happening in the backend when the scraping is going on

@@ -11,22 +11,13 @@ logger = configure_logger(__name__)
 
 class AnalysisProgressConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # self.user = self.scope["user"]
-        # if self.user.is_authenticated:
-        #     self.analysis_group_name = f"analysis_{self.user.id}"
+        user_phone_number = self.scope["url_route"]["kwargs"].get("user_phone_number")
 
-        #     await self.channel_layer.group_add(
-        #         self.analysis_group_name,
-        #         self.channel_name
-        #     )
+        if not user_phone_number:
+            await self.close()
+            return
 
-        #     await self.accept()
-        #     self.session_data: Dict[str, Any] = {}
-        #     logger.info(f"WebSocket connected for user: {self.user.email}")
-        # else:
-        #     logger.warning("Anonymous user, closing connection")
-        #     await self.close()
-        self.analysis_group_name = f"analysis_1"
+        self.analysis_group_name = f"analysis_{user_phone_number}"
 
         await self.channel_layer.group_add(self.analysis_group_name, self.channel_name)
 

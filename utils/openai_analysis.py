@@ -1,8 +1,12 @@
 import base64
 import json
 import os
+import time
 
 from property_analysis.config.base_config import openai_client as client
+from property_analysis.config.logging_config import configure_logger
+
+logger = configure_logger(__name__)
 
 
 def encode_image(image_file):
@@ -136,3 +140,31 @@ async def update_prompt_json_file(spaces, classifications):
     # Write the updated JSON back to the file
     with open("utils/data.json", "w") as file:
         json.dump(spaces, file, indent=4)
+
+
+async def get_openai_chat_response(instruction, message, prompt_format):
+    start_time = time.time()
+
+    messages = [
+        {"role": "system", "content": instruction},
+        {"role": "user", "content": message},
+    ]
+
+    structured_response = await client.chat.completions.create(
+        model="gpt-4o-mini",  # "chatgpt-4o-latest",
+        messages=messages,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "doc_response",
+                "strict": True,
+                "schema": prompt_format,
+            },
+        },
+    )
+
+    response = json.loads(structured_response.choices[0].message.content)
+    total = time.time() - start_time
+    logger.info(f"Chat Response Time: {total}")
+
+    return response

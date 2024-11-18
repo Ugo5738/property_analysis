@@ -1,7 +1,10 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from analysis import consumers
 
 websocket_urlpatterns = [
-    path("ws/analysis-progress/", consumers.AnalysisProgressConsumer.as_asgi()),
+    re_path(
+        r"ws/analysis-progress/(?P<user_phone_number>\w+)/$",
+        consumers.AnalysisProgressConsumer.as_asgi(),
+    ),
 ]

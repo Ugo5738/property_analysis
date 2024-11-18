@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 class Property(models.Model):
     url = models.URLField(unique=True)
+    user_phone_number = models.CharField(max_length=20)
     address = models.CharField(max_length=255, null=True, blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     bedrooms = models.IntegerField(null=True, blank=True)
@@ -14,6 +15,10 @@ class Property(models.Model):
     house_type = models.CharField(max_length=100, null=True, blank=True)
     agent = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
+    reviewed_description = models.TextField(null=True, blank=True)
+    listing_type = models.CharField(max_length=255, null=True, blank=True)
+    time_on_market = models.CharField(max_length=255, null=True, blank=True)
+    features = models.TextField(null=True, blank=True)
     floorplan_urls = models.JSONField(default=list, blank=True)
     overall_condition = models.JSONField(null=True, blank=True)
     detailed_analysis = models.JSONField(null=True, blank=True)
@@ -137,6 +142,7 @@ class AnalysisTask(models.Model):
     property = models.ForeignKey(
         Property, related_name="analysis_tasks", on_delete=models.CASCADE
     )
+    user_phone_number = models.CharField(max_length=20)
     status = models.CharField(max_length=20, default="PENDING")
     progress = models.FloatField(default=0.0)
     stage = models.CharField(max_length=50, default="")
