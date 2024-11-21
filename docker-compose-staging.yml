@@ -25,35 +25,17 @@ services:
     image: redis:latest
     container_name: analysis-app-redis
   
-  nginx-proxy:
-    image: jwilder/nginx-proxy
-    container_name: nginx_reverse_proxy
+  nginx:
+    image: nginx:latest
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ./certs:/etc/nginx/certs:ro
-      - ./nginx/vhost.d:/etc/nginx/vhost.d
-      - ./nginx/html:/usr/share/nginx/html
-      # - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    environment:
-      - DEFAULT_HOST=api.supersami.com
-
-  letsencrypt-nginx-proxy-companion:
-    image: jrcs/letsencrypt-nginx-proxy-companion
-    container_name: nginx_letsencrypt
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
     depends_on:
-      - nginx-proxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./certs:/etc/nginx/certs:rw
-      - ./nginx/vhost.d:/etc/nginx/vhost.d
-      - ./nginx/html:/usr/share/nginx/html
-      - ./nginx/acme.sh:/etc/acme.sh
-    environment:
-      - NGINX_PROXY_CONTAINER=nginx_reverse_proxy
-      - DEFAULT_EMAIL=rolfgroenewold@gmail.com
+      - web
+    container_name: nginx_proxy
 
   celery:
     build:

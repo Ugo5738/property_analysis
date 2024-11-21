@@ -5,6 +5,7 @@ from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
 from decouple import config
+from django.conf import settings
 
 from analysis.models import (
     AnalysisTask,
@@ -32,7 +33,9 @@ def analyze_property(property_id, task_id, user_phone_number, job_id):
 async def analyze_property_async(property_id, task_id, user_phone_number, job_id):
     logger.info("Analyze Property initiated...")
     channel_layer = get_channel_layer()
-    property_instance = await Property.objects.aget(id=property_id)
+    property_instance = await Property.objects.aget(
+        id=property_id, user_phone_number=user_phone_number
+    )
     task_instance = await AnalysisTask.objects.aget(id=task_id)
 
     # await sync_to_async(clear_property_data)(property_instance)
@@ -76,7 +79,7 @@ async def analyze_property_async(property_id, task_id, user_phone_number, job_id
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    f"https://52.23.156.175/api/site-scrapers/scrape/{job_id}/data/",
+                    f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/{job_id}/data/",
                     timeout=10,
                     ssl=ssl_context,
                 ) as response:
@@ -136,7 +139,7 @@ async def analyze_property_async(property_id, task_id, user_phone_number, job_id
 
         # Process property
         result = await process_property(
-            property_instance.url, image_ids, update_progress
+            property_instance.url, image_ids, update_progress, user_phone_number
         )
 
         # Update property with results

@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Property(models.Model):
-    url = models.URLField(unique=True)
+    url = models.URLField()
     user_phone_number = models.CharField(max_length=20)
     address = models.CharField(max_length=255, null=True, blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -31,6 +31,7 @@ class Property(models.Model):
     class Meta:
         verbose_name = _("Property")
         verbose_name_plural = _("Properties")
+        unique_together = ["url", "user_phone_number"]
 
 
 class PropertyImage(models.Model):

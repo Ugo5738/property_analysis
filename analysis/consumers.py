@@ -1,6 +1,6 @@
 import json
 from typing import Any, Dict
-from uuid import uuid4
+from urllib.parse import unquote
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 
@@ -12,6 +12,8 @@ logger = configure_logger(__name__)
 class AnalysisProgressConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         user_phone_number = self.scope["url_route"]["kwargs"].get("user_phone_number")
+        user_phone_number = unquote(user_phone_number)
+        logger.info(f"Decoded user_phone_number: {user_phone_number}")
 
         if not user_phone_number:
             await self.close()

@@ -27,7 +27,7 @@ from utils.prompts import categorize_prompt, labelling_prompt, spaces
 logger = configure_logger(__name__)
 
 
-async def process_property(property_url, image_ids, update_progress):
+async def process_property(property_url, image_ids, update_progress, user_phone_number):
     total_steps = 5  # Total number of main steps in the process
     step = 0  # Current step
 
@@ -43,7 +43,20 @@ async def process_property(property_url, image_ids, update_progress):
         "Image_Analysis": {},
     }
 
-    property_instance = await sync_to_async(Property.objects.get)(url=property_url)
+    try:
+        property_instance = await sync_to_async(Property.objects.get)(
+            url=property_url, user_phone_number=user_phone_number
+        )
+    except Property.DoesNotExist:
+        error_message = "Property not found for the given URL and user."
+        logger.error(error_message)
+        await update_progress("error", error_message, 0.0)
+        return {"error": error_message}
+    except Property.MultipleObjectsReturned:
+        error_message = "Multiple properties found for the given URL and user."
+        logger.error(error_message)
+        await update_progress("error", error_message, 0.0)
+        return {"error": error_message}
 
     async def update_step_progress(stage, message, sub_progress=0):
         nonlocal step

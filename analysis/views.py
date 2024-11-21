@@ -1,3 +1,6 @@
+import re
+from urllib.parse import urlparse, urlunparse
+
 import requests
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -7,6 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -27,15 +31,35 @@ class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()
     serializer_class = PropertySerializer
 
+    def get_queryset(self):
+        user_phone_number = self.request.query_params.get("user_phone_number")
+        if not user_phone_number:
+            raise ValidationError("User phone number is required.")
+        return Property.objects.filter(user_phone_number=user_phone_number).order_by(
+            "-created_at"
+        )
+
     @action(detail=False, methods=["get", "post"])
     def analyze(self, request):
-        url = request.data.get("url")
+        text_input = request.data.get("url")
         property_id = request.data.get("property_id")
         user_phone_number = request.data.get("user_phone_number")
 
-        if not url:
+        if not text_input:
+            return Response(
+                {"error": "Input text is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Attempt to extract URL from text_input using regex
+        url_pattern = r"(https?://[^\s]+)"
+        urls_found = re.findall(url_pattern, text_input)
+
+        if urls_found:
+            url = urls_found[0]  # Use the first URL found
+        else:
             instruction = "Your task is to extract the url from the text. Example format is 'https://rightmove.com/<property_id>/'"
-            message = url
+            message = text_input
             prompt_format = {
                 "type": "object",
                 "properties": {
@@ -44,8 +68,19 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 "required": ["url"],
                 "additionalProperties": False,
             }
-            url = async_to_sync(get_openai_chat_response)(
+            url_response = async_to_sync(get_openai_chat_response)(
                 instruction, message, prompt_format
+            )
+            url = (
+                url_response.get("url")
+                if isinstance(url_response, dict)
+                else url_response
+            )
+
+        if not url or url == "None":
+            return Response(
+                {"error": "No valid URL found in the input."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not property_id and not user_phone_number:
@@ -53,6 +88,16 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 {"error": "property_id or user phone number is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Normalize the URL to remove query parameters and fragments
+        parsed_url = urlparse(url)
+        # Reconstruct the URL without query and fragment
+        url = urlunparse(
+            (parsed_url.scheme, parsed_url.netloc, parsed_url.path, "", "", "")
+        )
+        # Remove trailing slash if present
+        url = url.rstrip("/")
+        print("This is the url: ", url)
 
         # Determine the source from the URL
         if "rightmove" in url:
@@ -70,7 +115,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 property_instance = Property.objects.get(
                     id=property_id, user_phone_number=user_phone_number
                 )
-                url = property_instance.url
+                property_instance.url = url
+                property_instance.save()
             except Property.DoesNotExist:
                 return Response(
                     {"error": "Property not found"}, status=status.HTTP_404_NOT_FOUND
@@ -105,12 +151,28 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     },
                     timeout=10,
                 )
+            elif config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.dev":
+                # Prepare callback URL
+                callback_url = f"{settings.MY_DOMAIN}{reverse('scraping-callback')}"
+                logger.info(f"Generated callback URL: {callback_url}")
+                response = requests.post(
+                    "http://analysis-scraper-app:8001/api/site-scrapers/scrape/",
+                    json={
+                        "url": url,
+                        "source": source,
+                        "callback_url": callback_url,
+                        "property_id": property_instance.id,
+                        "task_id": task.id,
+                        "user_phone_number": user_phone_number,
+                    },
+                    timeout=10,
+                )
             elif config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.prod":
                 # Prepare callback URL
                 callback_url = request.build_absolute_uri(reverse("scraping-callback"))
                 logger.info(f"Generated callback URL: {callback_url}")
                 response = requests.post(
-                    "https://52.23.156.175/api/site-scrapers/scrape/",
+                    f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/",
                     json={
                         "url": url,
                         "source": source,
@@ -182,33 +244,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
         }
 
         return Response(result)
-
-    @action(detail=False, methods=["get"])
-    def list_properties(self, request):
-        user_phone_number = request.query_params.get("user_phone_number")
-        if not user_phone_number:
-            return Response(
-                {"error": "User phone number is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        properties = Property.objects.filter(
-            user_phone_number=user_phone_number
-        ).order_by("-created_at")
-        serializer = self.get_serializer(properties, many=True)
-        return Response(serializer.data)
-
-    def retrieve(self, request, *args, **kwargs):
-        user_phone_number = request.query_params.get("user_phone_number")
-        if not user_phone_number:
-            return Response(
-                {"error": "User phone number is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        property_instance = get_object_or_404(
-            Property, pk=kwargs["pk"], user_phone_number=user_phone_number
-        )
-        serializer = self.get_serializer(property_instance)
-        return Response(serializer.data)
 
 
 class ScrapingCallbackView(APIView):
