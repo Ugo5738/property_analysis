@@ -27,7 +27,7 @@ from utils.prompts import categorize_prompt, labelling_prompt, spaces
 logger = configure_logger(__name__)
 
 
-async def process_property(property_url, image_ids, update_progress, user_phone_number):
+async def process_property(property_url, image_ids, update_progress, phone_number):
     total_steps = 5  # Total number of main steps in the process
     step = 0  # Current step
 
@@ -45,7 +45,7 @@ async def process_property(property_url, image_ids, update_progress, user_phone_
 
     try:
         property_instance = await sync_to_async(Property.objects.get)(
-            url=property_url, user_phone_number=user_phone_number
+            url=property_url, phone_number=phone_number
         )
     except Property.DoesNotExist:
         error_message = "Property not found for the given URL and user."
@@ -103,7 +103,9 @@ async def process_property(property_url, image_ids, update_progress, user_phone_
             all_condition_labels, all_condition_scores, property_instance.bedrooms
         )
         results["stages"]["overall_condition"] = property_condition
-        logger.info(f"This is the final results: {results}")
+
+        logger.info(f"==================== Final Result completed ====================")
+
         await update_step_progress(
             "overall_analysis", "Finished calculating overall condition", 1
         )
@@ -666,6 +668,8 @@ Detailed calculation of overall property condition:
     }
     return result
 
+
+# 447841869521
 
 # might need to work on studio, models.py, and analysis
 

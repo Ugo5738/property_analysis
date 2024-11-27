@@ -24,6 +24,8 @@ from analysis.tasks import analyze_property, clear_property_data
 from property_analysis.config.logging_config import configure_logger
 from utils.openai_analysis import get_openai_chat_response
 
+# from analysis.messaging import send_whatsapp_message
+
 logger = configure_logger(__name__)
 
 
@@ -32,10 +34,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
     serializer_class = PropertySerializer
 
     def get_queryset(self):
-        user_phone_number = self.request.query_params.get("user_phone_number")
-        if not user_phone_number:
+        phone_number = self.request.query_params.get("phone_number")
+        if not phone_number:
             raise ValidationError("User phone number is required.")
-        return Property.objects.filter(user_phone_number=user_phone_number).order_by(
+        return Property.objects.filter(phone_number=phone_number).order_by(
             "-created_at"
         )
 
@@ -43,7 +45,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def analyze(self, request):
         text_input = request.data.get("url")
         property_id = request.data.get("property_id")
-        user_phone_number = request.data.get("user_phone_number")
+        phone_number = request.data.get("phone_number")
+        source = request.data.get("source", "frontend")
 
         if not text_input:
             return Response(
@@ -83,7 +86,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not property_id and not user_phone_number:
+        if not property_id and not phone_number:
             return Response(
                 {"error": "property_id or user phone number is required"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -113,7 +116,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         if property_id:
             try:
                 property_instance = Property.objects.get(
-                    id=property_id, user_phone_number=user_phone_number
+                    id=property_id, phone_number=phone_number
                 )
                 property_instance.url = url
                 property_instance.save()
@@ -123,14 +126,14 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 )
         else:
             property_instance, created = Property.objects.get_or_create(
-                url=url, user_phone_number=user_phone_number
+                url=url, phone_number=phone_number
             )
 
         # Clear existing data
         clear_property_data(property_instance)
 
         task = AnalysisTask.objects.create(
-            property=property_instance, user_phone_number=user_phone_number
+            property=property_instance, phone_number=phone_number
         )
 
         # Send HTTP request to scraper app to start scraping
@@ -147,7 +150,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                         "callback_url": callback_url,
                         "property_id": property_instance.id,
                         "task_id": task.id,
-                        "user_phone_number": user_phone_number,
+                        "phone_number": phone_number,
                     },
                     timeout=10,
                 )
@@ -163,10 +166,31 @@ class PropertyViewSet(viewsets.ModelViewSet):
                         "callback_url": callback_url,
                         "property_id": property_instance.id,
                         "task_id": task.id,
-                        "user_phone_number": user_phone_number,
+                        "phone_number": phone_number,
                     },
                     timeout=10,
                 )
+            elif (
+                config("DJANGO_SETTINGS_MODULE")
+                == "property_analysis.settings.prod_with_raw_ip"
+            ):
+                # Prepare callback URL
+                callback_url = request.build_absolute_uri(reverse("scraping-callback"))
+                logger.info(f"Generated callback URL: {callback_url}")
+                response = requests.post(
+                    f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/",
+                    json={
+                        "url": url,
+                        "source": source,
+                        "callback_url": callback_url,
+                        "property_id": property_instance.id,
+                        "task_id": task.id,
+                        "phone_number": phone_number,
+                    },
+                    timeout=10,
+                    verify=False,
+                )
+                response.raise_for_status()
             elif config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.prod":
                 # Prepare callback URL
                 callback_url = request.build_absolute_uri(reverse("scraping-callback"))
@@ -179,10 +203,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
                         "callback_url": callback_url,
                         "property_id": property_instance.id,
                         "task_id": task.id,
-                        "user_phone_number": user_phone_number,
+                        "phone_number": phone_number,
                     },
                     timeout=10,
-                    verify=False,
                 )
                 response.raise_for_status()
             job_id = response.json().get("job_id")
@@ -193,6 +216,16 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 {"error": "Failed to start scraping job."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+
+        # Send acknowledgment
+        if source == "whatsapp":
+            # send_whatsapp_message(
+            #     phone_number, "Thank you! Your property analysis has been started."
+            # )
+            pass
+        else:
+            # For frontend users, you might return a HTTP response or send a WebSocket message
+            pass
 
         return Response(
             {"task_id": task.id, "property_id": property_instance.id},
@@ -253,9 +286,9 @@ class ScrapingCallbackView(APIView):
             # Handle progress update
             job_id = request.data.get("job_id")
             progress_data = request.data.get("progress")
-            user_phone_number = request.data.get("user_phone_number")
+            phone_number = request.data.get("phone_number")
 
-            if not job_id or progress_data is None or not user_phone_number:
+            if not job_id or progress_data is None or not phone_number:
                 return Response(
                     {"error": "Invalid progress data."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -267,7 +300,7 @@ class ScrapingCallbackView(APIView):
             # Send progress update via WebSocket
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
-                f"analysis_{user_phone_number}",
+                f"analysis_{phone_number}",
                 {
                     "type": "analysis_progress",
                     "message": progress_data,
@@ -280,9 +313,9 @@ class ScrapingCallbackView(APIView):
             job_id = request.data.get("job_id")
             property_id = request.data.get("property_id")
             task_id = request.data.get("task_id")
-            user_phone_number = request.data.get("user_phone_number")
+            phone_number = request.data.get("phone_number")
 
-            if not job_id or not property_id or not task_id or not user_phone_number:
+            if not job_id or not property_id or not task_id or not phone_number:
                 return Response(
                     {"error": "Invalid callback data."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -291,7 +324,7 @@ class ScrapingCallbackView(APIView):
             # user_id = request.user.id if authentication is implemented
 
             # Enqueue task to process the scraped data
-            analyze_property.delay(property_id, task_id, user_phone_number, job_id)
+            analyze_property.delay(property_id, task_id, phone_number, job_id)
 
             return Response(status=status.HTTP_200_OK)
 

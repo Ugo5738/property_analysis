@@ -24,17 +24,17 @@ logger = configure_logger(__name__)
 
 @shared_task()
 # @shared_task(name="property_analysis.tasks.analyze_property", queue="analysis_queue")
-def analyze_property(property_id, task_id, user_phone_number, job_id):
+def analyze_property(property_id, task_id, phone_number, job_id, source="frontend"):
     async_to_sync(analyze_property_async)(
-        property_id, task_id, user_phone_number, job_id
+        property_id, task_id, phone_number, job_id, source
     )
 
 
-async def analyze_property_async(property_id, task_id, user_phone_number, job_id):
+async def analyze_property_async(property_id, task_id, phone_number, job_id, source):
     logger.info("Analyze Property initiated...")
     channel_layer = get_channel_layer()
     property_instance = await Property.objects.aget(
-        id=property_id, user_phone_number=user_phone_number
+        id=property_id, phone_number=phone_number
     )
     task_instance = await AnalysisTask.objects.aget(id=task_id)
 
@@ -46,13 +46,26 @@ async def analyze_property_async(property_id, task_id, user_phone_number, job_id
         task_instance.stage = stage
         task_instance.stage_progress[stage] = progress
         await task_instance.asave()
-        await channel_layer.group_send(
-            f"analysis_{user_phone_number}",
-            {
-                "type": "analysis_progress",
-                "message": {"stage": stage, "message": message, "progress": progress},
-            },
-        )
+
+        if source == "frontend":
+            # Send progress update via WebSocket
+            await channel_layer.group_send(
+                f"analysis_{phone_number}",
+                {
+                    "type": "analysis_progress",
+                    "message": {
+                        "stage": stage,
+                        "message": message,
+                        "progress": progress,
+                    },
+                },
+            )
+        elif source == "whatsapp":
+            # Send progress update via WhatsApp
+            progress_message = (
+                f"Stage: {stage}\nProgress: {progress}%\nMessage: {message}"
+            )
+            # send_whatsapp_message(phone_number, progress_message)
 
     try:
         # Download images
@@ -71,7 +84,10 @@ async def analyze_property_async(property_id, task_id, user_phone_number, job_id
                         )
                     scraped_data = await response.json()
                     scraped_data = scraped_data.get("data")
-        elif config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.prod":
+        elif (
+            config("DJANGO_SETTINGS_MODULE")
+            == "property_analysis.settings.prod_with_raw_ip"
+        ):
             # Create an SSL context that does not verify certificates
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
@@ -82,6 +98,18 @@ async def analyze_property_async(property_id, task_id, user_phone_number, job_id
                     f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/{job_id}/data/",
                     timeout=10,
                     ssl=ssl_context,
+                ) as response:
+                    if response.status != 200:
+                        raise Exception(
+                            f"Failed to retrieve scraped data. Status code: {response.status}"
+                        )
+                    scraped_data = await response.json()
+                    scraped_data = scraped_data.get("data")
+        elif config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.prod":
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/{job_id}/data/",
+                    timeout=10,
                 ) as response:
                     if response.status != 200:
                         raise Exception(
@@ -139,7 +167,7 @@ async def analyze_property_async(property_id, task_id, user_phone_number, job_id
 
         # Process property
         result = await process_property(
-            property_instance.url, image_ids, update_progress, user_phone_number
+            property_instance.url, image_ids, update_progress, phone_number
         )
 
         # Update property with results
@@ -153,8 +181,20 @@ async def analyze_property_async(property_id, task_id, user_phone_number, job_id
         await task_instance.asave()
 
         await update_progress("complete", "Analysis completed successfully", 100.0)
+
+        # Send final results
+        if source == "whatsapp":
+            # Format the final results message
+            final_message = f"Your property analysis is complete.\nOverall Condition: {result['Condition']['overall_condition_label']}\nAverage Score: {result['Condition']['average_score']}\n\nThank you for using our service!"
+            # send_whatsapp_message(phone_number, final_message)
+        else:
+            # For frontend users, they will receive updates via WebSockets
+            pass
     except Exception as e:
         await update_progress("error", f"Error during analysis: {str(e)}", 0.0)
+        if source == "whatsapp":
+            # send_whatsapp_message(phone_number, f"An error occurred during analysis: {str(e)}")
+            pass
         task_instance.status = "ERROR"
         await task_instance.asave()
         property_instance.overall_condition = {"error": str(e)}

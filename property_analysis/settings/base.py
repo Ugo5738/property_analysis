@@ -268,4 +268,8 @@ ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY")
 
 # ==> SCRAPER APP
 SCRAPER_APP_URL = config("SCRAPER_APP_URL")
+
+# # ==> MESSAGING
+# TWILIO_ACCOUNT_SID = config("TWILIO_ACCOUNT_SID")
+# TWILIO_AUTH_TOKEN = config("TWILIO_AUTH_TOKEN")
 # ================================ CUSTOM VARIABLES =======================================

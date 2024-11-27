@@ -58,5 +58,6 @@ torch
 torchvision
 torchaudio
 git+https://github.com/openai/CLIP.git
+twilio
 numpy
 Pillow
