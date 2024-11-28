@@ -13,7 +13,7 @@ class AnalysisProgressConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         phone_number = self.scope["url_route"]["kwargs"].get("phone_number")
         phone_number = unquote(phone_number)
-        logger.info(f"Decoded phone_number: {phone_number}")
+        logger.info(f"Decoded the user's phone_number: {phone_number}")
 
         if not phone_number:
             await self.close()
