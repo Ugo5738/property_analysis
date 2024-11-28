@@ -25,7 +25,6 @@ google-api-python-client
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
-httpx
 langchain
 langchain-community
 langchain-openai
@@ -34,7 +33,7 @@ lxml
 markdown
 more-itertools
 numpy
-openai
+openai=1.54.0
 opencv-python
 openpyxl
 pandas
