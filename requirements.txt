@@ -33,7 +33,7 @@ lxml
 markdown
 more-itertools
 numpy
-openai=1.54.0
+openai==1.54.0
 opencv-python
 openpyxl
 pandas
