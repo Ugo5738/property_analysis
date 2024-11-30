@@ -195,19 +195,19 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 # Prepare callback URL
                 callback_url = request.build_absolute_uri(reverse("scraping-callback"))
                 logger.info(f"Generated callback URL: {callback_url}")
-            #     response = requests.post(
-            #         f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/",
-            #         json={
-            #             "url": url,
-            #             "source": source,
-            #             "callback_url": callback_url,
-            #             "property_id": property_instance.id,
-            #             "task_id": task.id,
-            #             "phone_number": phone_number,
-            #         },
-            #         timeout=30,
-            #     )
-            #     response.raise_for_status()
+                response = requests.post(
+                    f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/",
+                    json={
+                        "url": url,
+                        "source": source,
+                        "callback_url": callback_url,
+                        "property_id": property_instance.id,
+                        "task_id": task.id,
+                        "phone_number": phone_number,
+                    },
+                    timeout=30,
+                )
+                response.raise_for_status()
             job_id = response.json().get("job_id")
             task.save()
         except requests.Timeout as e:
