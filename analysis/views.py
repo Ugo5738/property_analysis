@@ -152,7 +152,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                         "task_id": task.id,
                         "phone_number": phone_number,
                     },
-                    timeout=10,
+                    timeout=30,
                 )
             elif config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.dev":
                 # Prepare callback URL
@@ -168,7 +168,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                         "task_id": task.id,
                         "phone_number": phone_number,
                     },
-                    timeout=10,
+                    timeout=30,
                 )
             elif (
                 config("DJANGO_SETTINGS_MODULE")
@@ -187,7 +187,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                         "task_id": task.id,
                         "phone_number": phone_number,
                     },
-                    timeout=10,
+                    timeout=30,
                     verify=False,
                 )
                 response.raise_for_status()
@@ -195,21 +195,39 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 # Prepare callback URL
                 callback_url = request.build_absolute_uri(reverse("scraping-callback"))
                 logger.info(f"Generated callback URL: {callback_url}")
-                response = requests.post(
-                    f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/",
-                    json={
-                        "url": url,
-                        "source": source,
-                        "callback_url": callback_url,
-                        "property_id": property_instance.id,
-                        "task_id": task.id,
-                        "phone_number": phone_number,
-                    },
-                    timeout=10,
-                )
-                response.raise_for_status()
+            #     response = requests.post(
+            #         f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/",
+            #         json={
+            #             "url": url,
+            #             "source": source,
+            #             "callback_url": callback_url,
+            #             "property_id": property_instance.id,
+            #             "task_id": task.id,
+            #             "phone_number": phone_number,
+            #         },
+            #         timeout=30,
+            #     )
+            #     response.raise_for_status()
             job_id = response.json().get("job_id")
             task.save()
+        except requests.Timeout as e:
+            logger.error(f"Request timed out: {str(e)}")
+            return Response(
+                {"error": "Scraping service timed out."},
+                status=status.HTTP_504_GATEWAY_TIMEOUT,
+            )
+        except requests.SSLError as e:
+            logger.error(f"SSL Error: {str(e)}")
+            return Response(
+                {"error": "SSL verification failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except requests.ConnectionError as e:
+            logger.error(f"Connection Error: {str(e)}")
+            return Response(
+                {"error": "Could not connect to scraping service."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         except requests.RequestException as e:
             logger.error(f"Failed to start scraping job: {str(e)}")
             return Response(
