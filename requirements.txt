@@ -21,7 +21,7 @@ djangorestframework-simplejwt
 dj-database-url
 drf-spectacular
 drf-yasg
-httpx==0.23.3
+# httpx==0.23.3
 google-api-python-client
 google-auth
 google-auth-oauthlib
@@ -34,7 +34,7 @@ lxml
 markdown
 more-itertools
 numpy
-openai==1.54.0
+openai==1.56.0
 opencv-python
 openpyxl
 pandas

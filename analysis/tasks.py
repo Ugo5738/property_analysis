@@ -25,29 +25,48 @@ logger = configure_logger(__name__)
 @shared_task()
 # @shared_task(name="property_analysis.tasks.analyze_property", queue="analysis_queue")
 def analyze_property(property_id, task_id, phone_number, job_id, source="frontend"):
+    print("Starting analyze_property task...")
     async_to_sync(analyze_property_async)(
         property_id, task_id, phone_number, job_id, source
     )
+    print("analyze_property task initiated.")
 
 
 async def analyze_property_async(property_id, task_id, phone_number, job_id, source):
     logger.info("Analyze Property initiated...")
+    logger.info("Analyze Property initiated...")
     channel_layer = get_channel_layer()
+    logger.info(f"Channel layer obtained: {channel_layer}")
+
+    logger.info(
+        f"Fetching property with ID {property_id} and phone number {phone_number}"
+    )
     property_instance = await Property.objects.aget(
         id=property_id, phone_number=phone_number
     )
+    logger.info(f"Property instance retrieved: {property_instance}")
+
+    logger.info(f"Fetching analysis task with ID {task_id}")
     task_instance = await AnalysisTask.objects.aget(id=task_id)
+    logger.info(f"Task instance retrieved: {task_instance}")
 
     # await sync_to_async(clear_property_data)(property_instance)
 
     async def update_progress(stage, message, progress):
+        logger.info(
+            f"Updating progress: Stage={stage}, Message={message}, Progress={progress}%"
+        )
         task_instance.status = stage
         task_instance.progress = progress
         task_instance.stage = stage
         task_instance.stage_progress[stage] = progress
         await task_instance.asave()
+        logger.info("Task instance progress updated and saved.")
 
         if source == "frontend":
+            logger.info(
+                f"Sending progress update via WebSocket to analysis_{phone_number}"
+            )
             # Send progress update via WebSocket
             await channel_layer.group_send(
                 f"analysis_{phone_number}",
@@ -61,6 +80,7 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
                 },
             )
         elif source == "whatsapp":
+            logger.info("Sending progress update via WhatsApp")
             # Send progress update via WhatsApp
             progress_message = (
                 f"Stage: {stage}\nProgress: {progress}%\nMessage: {message}"
@@ -69,60 +89,73 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
 
     try:
         # Download images
+        logger.info("Starting image download...")
         await update_progress("download", "Downloading images", 0)
 
         # Retrieve scraped data from scraper app
-        if config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.staging":
+        django_settings_module = config("DJANGO_SETTINGS_MODULE")
+        logger.info(f"Current DJANGO_SETTINGS_MODULE: {django_settings_module}")
+
+        if django_settings_module == "property_analysis.settings.staging":
+            logger.info("Environment: Staging")
             async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"http://analysis-scraper-app:8001/api/site-scrapers/scrape/{job_id}/data/",
-                    timeout=10,
-                ) as response:
+                url = f"http://analysis-scraper-app:8001/api/site-scrapers/scrape/{job_id}/data/"
+                logger.info(f"Fetching scraped data from URL: {url}")
+                async with session.get(url, timeout=10) as response:
+                    logger.info(f"Response status: {response.status}")
                     if response.status != 200:
                         raise Exception(
                             f"Failed to retrieve scraped data. Status code: {response.status}"
                         )
                     scraped_data = await response.json()
+                    logger.info(f"Scraped data received: {scraped_data}")
                     scraped_data = scraped_data.get("data")
-        elif (
-            config("DJANGO_SETTINGS_MODULE")
-            == "property_analysis.settings.prod_with_raw_ip"
-        ):
+        elif django_settings_module == "property_analysis.settings.prod_with_raw_ip":
+            logger.info("Environment: Production with raw IP")
             # Create an SSL context that does not verify certificates
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
 
             async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/{job_id}/data/",
-                    timeout=10,
-                    ssl=ssl_context,
-                ) as response:
+                url = f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/{job_id}/data/"
+                logger.info(f"Fetching scraped data from URL: {url}")
+                async with session.get(url, timeout=10, ssl=ssl_context) as response:
+                    logger.info(f"Response status: {response.status}")
                     if response.status != 200:
                         raise Exception(
                             f"Failed to retrieve scraped data. Status code: {response.status}"
                         )
                     scraped_data = await response.json()
+                    logger.info(f"Scraped data received: {scraped_data}")
                     scraped_data = scraped_data.get("data")
-        elif config("DJANGO_SETTINGS_MODULE") == "property_analysis.settings.prod":
+        elif django_settings_module == "property_analysis.settings.prod":
+            logger.info("Environment: Production")
             async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/{job_id}/data/",
-                    timeout=10,
-                ) as response:
+                url = f"https://{settings.SCRAPER_APP_URL}/api/site-scrapers/scrape/{job_id}/data/"
+                logger.info(f"Fetching scraped data from URL: {url}")
+                async with session.get(url, timeout=10) as response:
+                    logger.info(f"Response status: {response.status}")
                     if response.status != 200:
                         raise Exception(
                             f"Failed to retrieve scraped data. Status code: {response.status}"
                         )
                     scraped_data = await response.json()
+                    logger.info(f"Scraped data received: {scraped_data}")
                     scraped_data = scraped_data.get("data")
+        else:
+            logger.info("Unknown DJANGO_SETTINGS_MODULE value.")
+            raise Exception("Invalid DJANGO_SETTINGS_MODULE configuration.")
 
         if not scraped_data:
-            update_progress("error", "No data received from scraper app.", 0)
+            logger.info("No scraped data received from scraper app.")
+            await update_progress("error", "No data received from scraper app.", 0)
             return
+        else:
+            logger.info(f"Scraped data: {scraped_data}")
 
         # Save scraped data to your main app's database
+        logger.info("Saving scraped data to the database...")
         property_instance.address = scraped_data.get("address")
         property_instance.price = scraped_data.get("price")
         property_instance.bedrooms = scraped_data.get("bedrooms")
@@ -137,13 +170,17 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
         property_instance.image_urls = scraped_data.get("images")
         property_instance.floorplan_urls = scraped_data.get("floorplans")
         await property_instance.asave()
+        logger.info("Property instance updated and saved.")
 
         # Process description and features using the grok function to create reviewed_description
+        logger.info("Processing property description and features...")
         instruction = (
             "Please improve and summarize the following property description and key features, "
             "and produce a reviewed description suitable for property buyers."
         )
         message = f"Description: {property_instance.description}\nFeatures: {property_instance.features}"
+        logger.info(f"Instruction: {instruction}")
+        logger.info(f"Message for OpenAI API: {message}")
 
         prompt_format = {
             "type": "object",
@@ -153,52 +190,71 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
             "required": ["reviewed_description"],
             "additionalProperties": False,
         }
+        logger.info(f"Prompt format: {prompt_format}")
 
         reviewed_data = await get_openai_chat_response(
             instruction, message, prompt_format
         )
+        logger.info(f"Received reviewed data: {reviewed_data}")
         property_instance.reviewed_description = reviewed_data["reviewed_description"]
         await property_instance.asave()
+        logger.info("Property instance saved with reviewed description.")
 
+        logger.info("Downloading images...")
         image_ids, failed_downloads = await download_images(
             property_instance, update_progress
         )
+        logger.info(f"Image IDs obtained: {image_ids}")
+        logger.info(f"Failed image downloads: {failed_downloads}")
         property_instance.failed_downloads = failed_downloads
 
         # Process property
+        logger.info("Processing property analysis...")
         result = await process_property(
             property_instance.url, image_ids, update_progress, phone_number
         )
+        logger.info(f"Property analysis result: {result}")
 
         # Update property with results
+        logger.info("Updating property with analysis results...")
         property_instance.overall_condition = result["Condition"]
         property_instance.detailed_analysis = result["Detailed Analysis"]
         property_instance.overall_analysis = result["Overall Analysis"]
         await property_instance.asave()
+        logger.info("Property instance saved with analysis results.")
 
+        logger.info("Updating task status to COMPLETED.")
         task_instance.status = "COMPLETED"
         task_instance.progress = 100.0
         await task_instance.asave()
+        logger.info("Task instance updated and saved.")
 
         await update_progress("complete", "Analysis completed successfully", 100.0)
+        logger.info("Analysis completed successfully.")
 
         # Send final results
         if source == "whatsapp":
+            logger.info("Sending final results via WhatsApp...")
             # Format the final results message
             final_message = f"Your property analysis is complete.\nOverall Condition: {result['Condition']['overall_condition_label']}\nAverage Score: {result['Condition']['average_score']}\n\nThank you for using our service!"
+            logger.info(f"Final message: {final_message}")
             # send_whatsapp_message(phone_number, final_message)
         else:
+            logger.info("Final results will be sent via WebSockets.")
             # For frontend users, they will receive updates via WebSockets
             pass
     except Exception as e:
+        logger.info(f"An error occurred: {str(e)}")
         await update_progress("error", f"Error during analysis: {str(e)}", 0.0)
         if source == "whatsapp":
+            logger.info("Sending error message via WhatsApp.")
             # send_whatsapp_message(phone_number, f"An error occurred during analysis: {str(e)}")
             pass
         task_instance.status = "ERROR"
         await task_instance.asave()
         property_instance.overall_condition = {"error": str(e)}
         await property_instance.asave()
+        logger.info("Error handling completed.")
 
 
 def clear_property_data(property_instance):
