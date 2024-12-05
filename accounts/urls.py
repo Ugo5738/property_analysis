@@ -17,8 +17,21 @@ router = routers.DefaultRouter()
 router.register(r"users", views.UserViewSet, basename="user")
 
 admin_urls = [
-    path('', include(router.urls)),
-    path('user/', views.CurrentUserDetailView.as_view(), name='current_user'),
+    path("", include(router.urls)),
+    path("user/", views.CurrentUserDetailView.as_view(), name="current_user"),
+]
+
+manual_tokens = [
+    path(
+        "generate-token/",
+        views.GenerateTokenView.as_view(),
+        name="generate_auth",
+    ),
+    path(
+        "authenticate-token/",
+        views.TokenAuthenticationView.as_view(),
+        name="authenticate_auth",
+    ),
 ]
 
 jwt_urls = [
@@ -44,7 +57,7 @@ account_urls = [
         name="login",
     ),
     # path("logout/", auth_views.LogoutView.as_view(), name="logout"),
-    path('logout/', views.LogoutView.as_view(), name='auth_logout'),
+    path("logout/", views.LogoutView.as_view(), name="auth_logout"),
 ]
 
 password_urls = [
@@ -84,7 +97,7 @@ password_urls = [
     ),
 ]
 
-urlpatterns = admin_urls + jwt_urls + account_urls + password_urls
+urlpatterns = admin_urls + jwt_urls + account_urls + password_urls + manual_tokens
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

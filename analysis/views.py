@@ -71,9 +71,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 "required": ["url"],
                 "additionalProperties": False,
             }
-            url_response = async_to_sync(get_openai_chat_response)(
-                instruction, message, prompt_format
-            )
+            url_response = get_openai_chat_response(instruction, message, prompt_format)
             url = (
                 url_response.get("url")
                 if isinstance(url_response, dict)

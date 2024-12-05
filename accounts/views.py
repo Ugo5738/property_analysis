@@ -1,3 +1,4 @@
+import uuid
 from datetime import timedelta
 from typing import Any
 
@@ -22,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from accounts.models import User
+from accounts.models import User, UserToken
 from accounts.pagination import CustomPageNumberPagination
 from accounts.serializers import (
     ChangePasswordSerializer,
@@ -33,11 +34,64 @@ from accounts.serializers import (
 # from utils.email_utils import send_verification_email
 
 
-@method_decorator(ensure_csrf_cookie, name='dispatch')
+@method_decorator(ensure_csrf_cookie, name="dispatch")
 class GetCSRFToken(APIView):
     def get(self, request):
         csrf_token = get_token(request)
         return JsonResponse({"success": "CSRF cookie set", "csrftoken": csrf_token})
+
+
+class GenerateTokenView(APIView):
+    def post(self, request):
+        phone_number = request.data.get("phone_number")
+        if not phone_number:
+            return Response(
+                {"error": "Phone number is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate or retrieve token
+        user_token, created = UserToken.objects.get_or_create(phone_number=phone_number)
+        if not created:
+            # Update the token if it already exists
+            user_token.token = uuid.uuid4()
+            user_token.expires_at = timezone.now() + timedelta(hours=1)
+            user_token.save()
+
+        return Response({"token": str(user_token.token)}, status=status.HTTP_200_OK)
+
+
+class TokenAuthenticationView(APIView):
+    def post(self, request):
+        token = request.data.get("token")
+        if not token:
+            return Response(
+                {"error": "Token is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user_token = UserToken.objects.get(token=token)
+            if not user_token.is_valid():
+                return Response(
+                    {"error": "Token has expired."}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Retrieve or create the user
+            user, created = User.objects.get_or_create(phone=user_token.phone_number)
+            # Authenticate the user (e.g., create a session or issue a JWT)
+            # For simplicity, let's assume we're using session authentication
+            login(request, user)
+
+            # Optionally, invalidate the token after use
+            user_token.delete()
+
+            return Response(
+                {"message": "Authenticated successfully."}, status=status.HTTP_200_OK
+            )
+        except UserToken.DoesNotExist:
+            return Response(
+                {"error": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 # class RegisterAPIView(GenericAPIView):
@@ -140,30 +194,51 @@ class GetCSRFToken(APIView):
 
 class LoginView(APIView):
     def post(self, request: Request) -> Response:
-        email = request.data.get('email')
-        password = request.data.get('password')
+        email = request.data.get("email")
+        password = request.data.get("password")
 
         if not email:
-            return Response({"errors": {"email": ["Email is required"]}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"errors": {"email": ["Email is required"]}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if not password:
-            return Response({"errors": {"password": ["Password is required"]}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"errors": {"password": ["Password is required"]}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         user = authenticate(email=email, password=password)
 
         if user is not None:
             if not user.email_verified:
-                return Response({"errors": {"email": ["Please verify your email before logging in"]}}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response(
+                    {
+                        "errors": {
+                            "email": ["Please verify your email before logging in"]
+                        }
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
             refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            })
+            return Response(
+                {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                }
+            )
 
         user_exists = User.objects.filter(email=email).exists()
         if user_exists:
-            return Response({"errors": {"password": ["Invalid password"]}}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"errors": {"password": ["Invalid password"]}},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         else:
-            return Response({"errors": {"email": ["No account found with this email"]}}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"errors": {"email": ["No account found with this email"]}},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
 
 class LogoutView(APIView):
@@ -173,7 +248,10 @@ class LogoutView(APIView):
         try:
             refresh_token = request.data.get("refresh_token")
             if not refresh_token:
-                return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Refresh token is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             token = RefreshToken(refresh_token)
             token.blacklist()
@@ -182,7 +260,10 @@ class LogoutView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print("This is the error", e)
-            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class UserViewSet(viewsets.ModelViewSet):

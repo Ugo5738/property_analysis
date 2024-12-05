@@ -146,7 +146,7 @@ async def categorize_images(
         # base64_encoded = f"data:image/png;base64,{base64_encoded}"
         base64_image = f"data:image/jpeg;base64,{base64_encoded}"
 
-        structured_output = await analyze_single_image(categorize_prompt, base64_image)
+        structured_output = analyze_single_image(categorize_prompt, base64_image)
         category_result = structured_output["response_content"]
 
         if category_result:
@@ -404,7 +404,7 @@ async def analyze_merged_images(property_instance, results, update_step_progress
         )
 
         try:
-            structured_output = await analyze_single_image(
+            structured_output = analyze_single_image(
                 full_prompt, base64_merged_image, sample_images_dict
             )
             if "error" in structured_output:

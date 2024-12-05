@@ -14,7 +14,7 @@ def encode_image(image_file):
         return base64.b64encode(file.read()).decode("utf-8")
 
 
-async def analyze_single_image(text_prompt, target_image, sample_images_dict=None):
+def analyze_single_image(text_prompt, target_image, sample_images_dict=None):
     try:
         messages = [
             {
@@ -79,7 +79,7 @@ async def analyze_single_image(text_prompt, target_image, sample_images_dict=Non
             print(f"Error: target_image is not a string: {type(target_image)}")
             return None
 
-        response = await client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
             response_format={"type": "json_object"},
@@ -142,7 +142,7 @@ async def update_prompt_json_file(spaces, classifications):
         json.dump(spaces, file, indent=4)
 
 
-async def get_openai_chat_response(instruction, message, prompt_format):
+def get_openai_chat_response(instruction, message, prompt_format):
     start_time = time.time()
 
     messages = [
@@ -150,7 +150,7 @@ async def get_openai_chat_response(instruction, message, prompt_format):
         {"role": "user", "content": message},
     ]
 
-    structured_response = await client.chat.completions.create(
+    structured_response = client.chat.completions.create(
         model="gpt-4o-mini",  # "chatgpt-4o-latest",
         messages=messages,
         response_format={

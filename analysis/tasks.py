@@ -34,7 +34,6 @@ def analyze_property(property_id, task_id, phone_number, job_id, source="fronten
 
 async def analyze_property_async(property_id, task_id, phone_number, job_id, source):
     logger.info("Analyze Property initiated...")
-    logger.info("Analyze Property initiated...")
     channel_layer = get_channel_layer()
     logger.info(f"Channel layer obtained: {channel_layer}")
 
@@ -192,13 +191,24 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
         }
         logger.info(f"Prompt format: {prompt_format}")
 
-        reviewed_data = await get_openai_chat_response(
-            instruction, message, prompt_format
-        )
-        logger.info(f"Received reviewed data: {reviewed_data}")
-        property_instance.reviewed_description = reviewed_data["reviewed_description"]
-        await property_instance.asave()
-        logger.info("Property instance saved with reviewed description.")
+        review_data = "Property instance saved."
+        try:
+            reviewed_data = get_openai_chat_response(
+                instruction, message, prompt_format
+            )
+            logger.info(f"Received reviewed data: {reviewed_data}")
+            property_instance.reviewed_description = reviewed_data[
+                "reviewed_description"
+            ]
+            review_data = review_data + "with reviewed description."
+        except Exception as e:
+            logger.info(f"Failed to get reviewed description: {e}")
+            # Proceed without the reviewed description
+            property_instance.reviewed_description = None
+            # Optionally, schedule a retry or log the error
+        finally:
+            await property_instance.asave()
+            logger.info(review_data)
 
         logger.info("Downloading images...")
         image_ids, failed_downloads = await download_images(

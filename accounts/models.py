@@ -1,7 +1,12 @@
+import uuid
+from datetime import timedelta
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django_countries.fields import CountryField
+
 from helpers.models import TrackingModel
 
 GENDER_CHOICES = (("M", "Male"), ("F", "Female"))
@@ -93,3 +98,13 @@ class OrganizationProfile(TrackingModel):
     class Meta:
         verbose_name = _("Organization")
         verbose_name_plural = _("Organizations")
+
+
+class UserToken(models.Model):
+    phone_number = models.CharField(max_length=20)
+    token = models.UUIDField(default=uuid.uuid4, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=timezone.now() + timedelta(hours=1))
+
+    def is_valid(self):
+        return self.expires_at > timezone.now()
