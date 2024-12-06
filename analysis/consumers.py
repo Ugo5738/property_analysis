@@ -11,15 +11,13 @@ logger = configure_logger(__name__)
 
 class AnalysisProgressConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        phone_number = self.scope["url_route"]["kwargs"].get("phone_number")
-        phone_number = unquote(phone_number)
-        logger.info(f"Decoded the user's phone_number: {phone_number}")
-
-        if not phone_number:
+        # Authenticate the user
+        user = self.scope["user"]
+        if user.is_anonymous:
             await self.close()
             return
-
-        self.analysis_group_name = f"analysis_{phone_number}"
+        self.user = user
+        self.analysis_group_name = f"analysis_{user.id}"
 
         await self.channel_layer.group_add(self.analysis_group_name, self.channel_name)
 

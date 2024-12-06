@@ -43,13 +43,11 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser, TrackingModel):
-    email = models.EmailField(
-        _("email address"), db_index=True, unique=True, blank=True, null=True
-    )
+    email = models.EmailField(_("email address"), db_index=True, blank=True, null=True)
     username = models.CharField(
         _("username"), max_length=30, blank=True, null=True, unique=False
     )
-    phone = models.CharField(max_length=60, blank=True, null=True)
+    phone = models.CharField(unique=True, max_length=60, blank=True, null=True)
     gender = models.CharField(
         max_length=1, choices=GENDER_CHOICES, blank=True, null=True
     )
@@ -67,8 +65,8 @@ class User(AbstractUser, TrackingModel):
 
     objects = UserManager()
 
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["first_name", "last_name"]
+    USERNAME_FIELD = "phone"  # "email"
+    REQUIRED_FIELDS = []
 
     def __str__(self):
         return "{}".format(self.email)

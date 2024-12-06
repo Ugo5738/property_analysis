@@ -76,22 +76,64 @@ class TokenAuthenticationView(APIView):
                     {"error": "Token has expired."}, status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Retrieve or create the user
+            # Get or create the user
             user, created = User.objects.get_or_create(phone=user_token.phone_number)
-            # Authenticate the user (e.g., create a session or issue a JWT)
-            # For simplicity, let's assume we're using session authentication
-            login(request, user)
 
-            # Optionally, invalidate the token after use
-            user_token.delete()
+            # Generate JWT tokens with additional claims
+            refresh = RefreshToken.for_user(user)
+            refresh["phone"] = user.phone  # Add phone number to token claims
+            refresh["user_id"] = user.id  # Add the user_id claim
+            access_token = str(refresh.access_token)
 
             return Response(
-                {"message": "Authenticated successfully."}, status=status.HTTP_200_OK
+                {
+                    "refresh": str(refresh),
+                    "access": access_token,
+                    "message": "Authenticated successfully.",
+                    "user": {"id": user.id, "phone": user.phone},
+                },
+                status=status.HTTP_200_OK,
             )
         except UserToken.DoesNotExist:
             return Response(
                 {"error": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class PhoneAuthenticationView(APIView):
+    def post(self, request):
+        phone_number = request.data.get("phone_number")
+        if not phone_number:
+            return Response(
+                {"error": "Phone number is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Best practice, send an OTP here
+        # For now, we'll authenticate directly (Note: This is not secure)
+        user, created = User.objects.get_or_create(phone=phone_number)
+
+        # Generate JWT tokens with additional claims
+        refresh = RefreshToken.for_user(user)
+        refresh["phone"] = user.phone  # Add phone number to token claims
+        access_token = str(refresh.access_token)
+
+        return Response(
+            {
+                "refresh": str(refresh),
+                "access": access_token,
+                "message": "Authenticated successfully.",
+                "user": {"id": user.id, "phone": user.phone},
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class CheckAuthenticatedView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({"message": "Authenticated"}, status=status.HTTP_200_OK)
 
 
 # class RegisterAPIView(GenericAPIView):

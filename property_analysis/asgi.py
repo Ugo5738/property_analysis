@@ -12,11 +12,9 @@ django.setup()
 from analysis import routing
 from property_analysis.jwt_auth_middleware import JWTAuthMiddleware
 
-application = ProtocolTypeRouter({
-    "http": get_asgi_application(),
-    "websocket": JWTAuthMiddleware(
-        URLRouter(
-            routing.websocket_urlpatterns
-        )
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        "http": get_asgi_application(),
+        "websocket": JWTAuthMiddleware(URLRouter(routing.websocket_urlpatterns)),
+    }
+)

@@ -11,6 +11,7 @@ from django.urls import reverse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -32,20 +33,33 @@ logger = configure_logger(__name__)
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()
     serializer_class = PropertySerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        phone_number = self.request.query_params.get("phone_number")
-        if not phone_number:
-            raise ValidationError("User phone number is required.")
-        return Property.objects.filter(phone_number=phone_number).order_by(
-            "-created_at"
-        )
+        user = self.request.user
+
+        # Get phone from user object directly
+        phone = getattr(user, "phone", None)
+
+        if not phone:
+            raise ValidationError("User does not have a phone number associated")
+
+        return Property.objects.filter(phone_number=phone).order_by("-created_at")
 
     @action(detail=False, methods=["get", "post"])
     def analyze(self, request):
+        user = request.user
+
+        if not hasattr(user, "phone_number"):
+            return Response(
+                {"error": "Authenticated user does not have a phone number."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        phone_number = user.phone
+
         text_input = request.data.get("url")
         property_id = request.data.get("property_id")
-        phone_number = request.data.get("phone_number")
         source = request.data.get("source", "frontend")
 
         if not text_input:
@@ -84,9 +98,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not property_id and not phone_number:
+        if not property_id:
             return Response(
-                {"error": "property_id or user phone number is required"},
+                {"error": "property_id is required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -98,7 +112,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         )
         # Remove trailing slash if present
         url = url.rstrip("/")
-        print("This is the url: ", url)
+        logger.debug("Normalized URL: %s", url)
 
         # Determine the source from the URL
         if "rightmove" in url:
@@ -111,20 +125,15 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if property_id:
-            try:
-                property_instance = Property.objects.get(
-                    id=property_id, phone_number=phone_number
-                )
-                property_instance.url = url
-                property_instance.save()
-            except Property.DoesNotExist:
-                return Response(
-                    {"error": "Property not found"}, status=status.HTTP_404_NOT_FOUND
-                )
-        else:
-            property_instance, created = Property.objects.get_or_create(
-                url=url, phone_number=phone_number
+        try:
+            property_instance = Property.objects.get(
+                id=property_id, phone_number=phone_number
+            )
+            property_instance.url = url
+            property_instance.save()
+        except Property.DoesNotExist:
+            return Response(
+                {"error": "Property not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
         # Clear existing data
@@ -250,8 +259,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def analysis_status(self, request, pk=None):
-        property = self.get_object()
-        task = property.analysis_tasks.latest("created_at")
+        property_instance = self.get_object()
+        task = property_instance.analysis_tasks.latest("created_at")
         serializer = AnalysisTaskSerializer(task)
         return Response(serializer.data)
 

@@ -223,7 +223,8 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
         result = await process_property(
             property_instance.url, image_ids, update_progress, phone_number
         )
-        logger.info(f"Property analysis result: {result}")
+        # logger.info(f"Property analysis result: {result}")
+        logger.info(f"Property analysis done")
 
         # Update property with results
         logger.info("Updating property with analysis results...")

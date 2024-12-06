@@ -4,7 +4,7 @@ from analysis import consumers
 
 websocket_urlpatterns = [
     re_path(
-        r"ws/analysis-progress/(?P<phone_number>\w+)/$",
+        r"ws/analysis-progress/$",
         consumers.AnalysisProgressConsumer.as_asgi(),
     ),
 ]

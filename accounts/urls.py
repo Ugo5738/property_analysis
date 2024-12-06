@@ -32,6 +32,16 @@ manual_tokens = [
         views.TokenAuthenticationView.as_view(),
         name="authenticate_auth",
     ),
+    path(
+        "authenticate-phone/",
+        views.PhoneAuthenticationView.as_view(),
+        name="authenticate-phone",
+    ),
+    path(
+        "check-authenticated/",
+        views.CheckAuthenticatedView.as_view(),
+        name="check-authenticated",
+    ),
 ]
 
 jwt_urls = [
