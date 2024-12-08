@@ -50,7 +50,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def analyze(self, request):
         user = request.user
 
-        if not hasattr(user, "phone_number"):
+        if not hasattr(user, "phone"):
             return Response(
                 {"error": "Authenticated user does not have a phone number."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -75,7 +75,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         if urls_found:
             url = urls_found[0]  # Use the first URL found
         else:
-            instruction = "Your task is to extract the url from the text. Example format is 'https://rightmove.com/<property_id>/'"
+            instruction = "Your task is to extract the url from the text. Example format is 'https://rightmove.com/properties/<property_id>/'"
             message = text_input
             prompt_format = {
                 "type": "object",
@@ -98,9 +98,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not property_id:
+        if not property_id and not phone_number:
             return Response(
-                {"error": "property_id is required."},
+                {"error": "property_id or user phone number is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -125,15 +125,20 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            property_instance = Property.objects.get(
-                id=property_id, phone_number=phone_number
-            )
-            property_instance.url = url
-            property_instance.save()
-        except Property.DoesNotExist:
-            return Response(
-                {"error": "Property not found"}, status=status.HTTP_404_NOT_FOUND
+        if property_id:
+            try:
+                property_instance = Property.objects.get(
+                    id=property_id, phone_number=phone_number
+                )
+                property_instance.url = url
+                property_instance.save()
+            except Property.DoesNotExist:
+                return Response(
+                    {"error": "Property not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            property_instance, created = Property.objects.get_or_create(
+                url=url, phone_number=phone_number
             )
 
         # Clear existing data
@@ -223,7 +228,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 {"error": "Scraping service timed out."},
                 status=status.HTTP_504_GATEWAY_TIMEOUT,
             )
-        except requests.SSLError as e:
+        except requests.exceptions.SSLError as e:
             logger.error(f"SSL Error: {str(e)}")
             return Response(
                 {"error": "SSL verification failed."},

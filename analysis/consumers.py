@@ -1,6 +1,5 @@
 import json
 from typing import Any, Dict
-from urllib.parse import unquote
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 

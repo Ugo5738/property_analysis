@@ -52,12 +52,6 @@ class GenerateTokenView(APIView):
 
         # Generate or retrieve token
         user_token, created = UserToken.objects.get_or_create(phone_number=phone_number)
-        if not created:
-            # Update the token if it already exists
-            user_token.token = uuid.uuid4()
-            user_token.expires_at = timezone.now() + timedelta(hours=1)
-            user_token.save()
-
         return Response({"token": str(user_token.token)}, status=status.HTTP_200_OK)
 
 
@@ -71,10 +65,6 @@ class TokenAuthenticationView(APIView):
 
         try:
             user_token = UserToken.objects.get(token=token)
-            if not user_token.is_valid():
-                return Response(
-                    {"error": "Token has expired."}, status=status.HTTP_400_BAD_REQUEST
-                )
 
             # Get or create the user
             user, created = User.objects.get_or_create(phone=user_token.phone_number)
@@ -133,6 +123,7 @@ class CheckAuthenticatedView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        print("This is the user: ", request.user.phone)
         return Response({"message": "Authenticated"}, status=status.HTTP_200_OK)
 
 

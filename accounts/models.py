@@ -102,7 +102,3 @@ class UserToken(models.Model):
     phone_number = models.CharField(max_length=20)
     token = models.UUIDField(default=uuid.uuid4, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(default=timezone.now() + timedelta(hours=1))
-
-    def is_valid(self):
-        return self.expires_at > timezone.now()

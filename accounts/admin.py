@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from accounts.models import OrganizationProfile, User
+from accounts.models import OrganizationProfile, User, UserToken
 
 
 class UserAdmin(admin.ModelAdmin):
@@ -24,5 +24,16 @@ class OrganizationProfileAdmin(admin.ModelAdmin):
     raw_id_fields = ["user"]
 
 
+class UserTokenAdmin(admin.ModelAdmin):
+    list_display = [
+        "phone_number",
+        "token",
+        "created_at",
+    ]
+    list_filter = ["phone_number"]
+    search_fields = ["phone_number"]
+
+
 admin.site.register(User, UserAdmin)
 admin.site.register(OrganizationProfile, OrganizationProfileAdmin)
+admin.site.register(UserToken, UserTokenAdmin)

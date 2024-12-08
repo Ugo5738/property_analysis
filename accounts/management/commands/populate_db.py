@@ -17,20 +17,20 @@ class Command(BaseCommand):
         # Set your custom superuser data
         username: str = settings.ADMIN_USERNAME
         email: str = settings.ADMIN_EMAIL
+        phone: str = settings.ADMIN_PHONE
+
         password: str = settings.ADMIN_PASSWORD
 
         try:
             # Attempt to create a new superuser
             User.objects.create_superuser(
-                username=username, email=email, password=password
+                username=username, phone=phone, email=email, password=password
             )
             self.stdout.write(
-                self.style.SUCCESS(f"Superuser {username} created successfully")
+                self.style.SUCCESS(f"Superuser {phone} created successfully")
             )
         except IntegrityError:
-            self.stdout.write(
-                self.style.WARNING(f"Superuser {username} already exists")
-            )
+            self.stdout.write(self.style.WARNING(f"Superuser {phone} already exists"))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"An error occurred: {str(e)}"))
 
