@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from analysis.models import AnalysisTask, Property, PropertyImage
+from analysis.models import AnalysisTask, Prompt, Property, PropertyImage
 
 
 class PropertyImageSerializer(serializers.ModelSerializer):
@@ -62,3 +62,15 @@ class AnalysisTaskSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class PromptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Prompt
+        fields = ["name", "content"]  # , "spaces"]
+
+
+class PromptUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    content = serializers.CharField()
+    # spaces = serializers.ListField(child=serializers.CharField(), required=False)

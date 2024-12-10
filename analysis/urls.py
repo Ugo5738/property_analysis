@@ -14,4 +14,6 @@ urlpatterns = [
         views.ScrapingCallbackView.as_view(),
         name="scraping-callback",
     ),
+    path("update-prompt/", views.PromptUpdateView.as_view(), name="update-prompt"),
+    path("get-prompt/", views.GetPromptView.as_view(), name="get-prompt"),
 ]

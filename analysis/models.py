@@ -4,6 +4,20 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
+class Prompt(models.Model):
+    name = models.CharField(max_length=100)
+    content = models.TextField()
+    version = models.IntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-version"]
+
+    def __str__(self):
+        return f"{self.name} (v{self.version})"
+
+
 class Property(models.Model):
     url = models.URLField()
     phone_number = models.CharField(max_length=20)

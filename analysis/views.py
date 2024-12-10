@@ -15,9 +15,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from analysis.models import AnalysisTask, Property, PropertyImage
+from analysis.models import AnalysisTask, Prompt, Property, PropertyImage
 from analysis.serializers import (
     AnalysisTaskSerializer,
+    PromptUpdateSerializer,
     PropertyImageSerializer,
     PropertySerializer,
 )
@@ -378,3 +379,75 @@ class PropertyImageViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(created_images, many=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PromptUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PromptUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        name = data["name"]
+        content = data["content"]
+        # spaces = data.get("spaces", [])
+
+        # Get the current active prompt to find current version
+        current_prompt = (
+            Prompt.objects.filter(name=name, is_active=True)
+            .order_by("-version")
+            .first()
+        )
+        if current_prompt:
+            new_version = current_prompt.version + 1
+            # Deactivate old version
+            current_prompt.is_active = False
+            current_prompt.save()
+        else:
+            new_version = 1
+
+        # Create the new version
+        new_prompt = Prompt.objects.create(
+            name=name,
+            content=content,
+            # spaces=spaces,
+            version=new_version,
+            is_active=True,
+        )
+
+        return Response(
+            {"message": f"Prompt {name} updated to version {new_version}."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class GetPromptView(APIView):
+    def get(self, request):
+        name = request.query_params.get("name")
+
+        if not name:
+            return Response(
+                {"error": "Missing 'name' query parameter"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Fetch the active/latest version of the prompt
+        prompt = (
+            Prompt.objects.filter(name=name, is_active=True)
+            .order_by("-version")
+            .first()
+        )
+        if not prompt:
+            return Response(
+                {"error": f"No active prompt found for name: {name}"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        data = {
+            "name": prompt.name,
+            "content": prompt.content,
+            "version": prompt.version,
+            "is_active": prompt.is_active,
+        }
+        return Response(data, status=status.HTTP_200_OK)

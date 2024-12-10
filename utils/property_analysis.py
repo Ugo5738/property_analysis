@@ -22,7 +22,7 @@ from utils.openai_analysis import (
     encode_image,
     update_prompt_json_file,
 )
-from utils.prompts import categorize_prompt, labelling_prompt, spaces
+from utils.prompts import categorize_prompt, get_prompts, spaces
 
 logger = configure_logger(__name__)
 
@@ -362,6 +362,9 @@ async def merge_grouped_images(property_instance, results, update_step_progress)
 
 
 async def analyze_merged_images(property_instance, results, update_step_progress):
+    # Fetch the prompt
+    labelling_prompt = await sync_to_async(get_prompts)()
+
     merged_images = await sync_to_async(list)(
         MergedPropertyImage.objects.filter(property=property_instance)
     )

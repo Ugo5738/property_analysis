@@ -6,6 +6,7 @@ from analysis.models import (
     GroupedImages,
     MergedPropertyImage,
     MergedSampleImage,
+    Prompt,
     Property,
     PropertyImage,
     SampleImage,
@@ -183,3 +184,10 @@ class AnalysisTaskAdmin(admin.ModelAdmin):
         return "N/A"
 
     stage_progress_display.short_description = "Stage Progress"
+
+
+@admin.register(Prompt)
+class PromptAdmin(admin.ModelAdmin):
+    list_display = ("name", "version", "is_active", "updated_at")
+    list_filter = ("name", "is_active")
+    search_fields = ("name", "content")

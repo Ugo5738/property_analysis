@@ -1,5 +1,7 @@
 import json
 
+from analysis.models import Prompt
+
 # generally if an property has lifestyle images, it most likely is above average or excellent
 # make the categorization output more flexible and then map the term. For terms outside the scope of categorization words, use the model to map the OOS to categorizations. i.e, let AI handle edge cases and update the code
 
@@ -24,6 +26,23 @@ internal_types = ", ".join(
 external_types = ", ".join(
     sum((spaces[area] for area in ["front_garden_space", "back_garden_space"]), [])
 )
+
+
+def get_prompts():
+    labelling_prompt_obj = (
+        Prompt.objects.filter(name="labelling_prompt", is_active=True)
+        .order_by("-version")
+        .first()
+    )
+    # categorize_prompt_obj = Prompt.objects.filter(name='categorize_prompt', is_active=True).order_by('-version').first()
+    # spaces_prompt_obj = Prompt.objects.filter(name='spaces', is_active=True).order_by('-version').first()
+
+    # categorize_prompt = categorize_prompt_obj.content if categorize_prompt_obj else ""
+    labelling_prompt = labelling_prompt_obj.content if labelling_prompt_obj else ""
+    # spaces = spaces_prompt_obj.spaces if spaces_prompt_obj and spaces_prompt_obj.spaces else []
+
+    return labelling_prompt  # , spaces  # , categorize_prompt
+
 
 categorize_prompt = f"""
 You are an image classification assistant. Categorize each image as either "internal," "external," or "floor plan." Provide details based on the category:
