@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.db import transaction
+from django.db.models import Max
 from django.utils.html import format_html
 
 from analysis.models import (
@@ -186,8 +188,60 @@ class AnalysisTaskAdmin(admin.ModelAdmin):
     stage_progress_display.short_description = "Stage Progress"
 
 
+def revert_to_version(modeladmin, request, queryset):
+    # For each selected prompt, make that version active and deactivate others of the same name
+    for prompt in queryset:
+        Prompt.objects.filter(name=prompt.name).update(is_active=False)
+        prompt.is_active = True
+        prompt.save()
+
+
+revert_to_version.short_description = "Revert selected prompts to this version"
+
+
 @admin.register(Prompt)
 class PromptAdmin(admin.ModelAdmin):
+    actions = [revert_to_version]
+
     list_display = ("name", "version", "is_active", "updated_at")
     list_filter = ("name", "is_active")
     search_fields = ("name", "content")
+    readonly_fields = ("version", "updated_at")
+
+    def get_queryset(self, request):
+        # Show all versions, or only active ones if desired.
+        qs = super().get_queryset(request)
+        return qs
+
+    def save_model(self, request, obj, form, change):
+        """
+        Override save_model to implement versioning logic:
+        - If it's a new object, just save it.
+        - If it's an update to an existing prompt, deactivate all versions and create a new version.
+        """
+        if obj.pk:
+            old_prompt = Prompt.objects.get(pk=obj.pk)
+
+            # Check if content or name changed
+            if old_prompt.content != obj.content or old_prompt.name != obj.name:
+                with transaction.atomic():
+                    # Deactivate all versions of this prompt name
+                    Prompt.objects.filter(name=old_prompt.name).update(is_active=False)
+
+                    # Find the highest version number currently in the database for this prompt name
+                    max_version = (
+                        Prompt.objects.filter(name=old_prompt.name).aggregate(
+                            Max("version")
+                        )["version__max"]
+                        or 0
+                    )
+
+                    # Create a new version that is greater than any existing version number
+                    obj.pk = None
+                    obj.version = max_version + 1
+                    obj.is_active = True
+                    super().save_model(request, obj, form, False)
+                return
+
+        # If it's a new object or nothing changed, just save normally
+        super().save_model(request, obj, form, change)
