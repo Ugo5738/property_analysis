@@ -70,8 +70,10 @@ jobs:
           # FRONTEND_BASE_URL: ${{ secrets.FRONTEND_BASE_URL }}
           # FRONTEND_CALLBACK_URL: ${{ secrets.FRONTEND_CALLBACK_URL }}
 
-          # -------------------------- SCRAPER APPLICATION ----------------------------
+          # -------------------------- EXTERNAL APPLICATION ----------------------------
           SCRAPER_APP_URL: ${{ secrets.SCRAPER_APP_URL }}
+          FRONTEND_APP: ${{ secrets.FRONTEND_APP }}
+          NOTIFICATION_APP: ${{ secrets.NOTIFICATION_APP }}
           # ===========================================================
         run: |
           python manage.py test

@@ -1,12 +1,14 @@
 import ssl
 
 import aiohttp
+import requests
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
 from decouple import config
 from django.conf import settings
 
+from accounts.models import UserToken
 from analysis.models import (
     AnalysisTask,
     GroupedImages,
@@ -25,11 +27,10 @@ logger = configure_logger(__name__)
 @shared_task()
 # @shared_task(name="property_analysis.tasks.analyze_property", queue="analysis_queue")
 def analyze_property(property_id, task_id, phone_number, job_id, source="frontend"):
-    print("Starting analyze_property task...")
+    logger.info("Starting analyze_property task...")
     async_to_sync(analyze_property_async)(
         property_id, task_id, phone_number, job_id, source
     )
-    print("analyze_property task initiated.")
 
 
 async def analyze_property_async(property_id, task_id, phone_number, job_id, source):
@@ -43,6 +44,8 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
     property_instance = await Property.objects.aget(
         id=property_id, phone_number=phone_number
     )
+    user_token, created = await UserToken.objects.get(phone_number=phone_number)
+
     logger.info(f"Property instance retrieved: {property_instance}")
 
     logger.info(f"Fetching analysis task with ID {task_id}")
@@ -249,7 +252,7 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
             # Format the final results message
             final_message = f"Your property analysis is complete.\nOverall Condition: {result['Condition']['overall_condition_label']}\nAverage Score: {result['Condition']['average_score']}\n\nThank you for using our service!"
             logger.info(f"Final message: {final_message}")
-            # send_whatsapp_message(phone_number, final_message)
+            notify_user(phone_number, user_token, property_id, result)
         else:
             logger.info("Final results will be sent via WebSockets.")
             # For frontend users, they will receive updates via WebSockets
@@ -287,6 +290,33 @@ def clear_property_data(property_instance):
     property_instance.failed_downloads = []
     property_instance.image_urls = []
     property_instance.save()
+
+
+def notify_user(phone_number, user_token, property_id, analysis_data):
+    # This function is called once analysis is complete
+    notification_service_url = f"{settings.NOTIFICATION_APP}/api/notifications/notify/"
+
+    analysis_url = (
+        f"{settings.FRONTEND_APP}/properties/{property_id}/?token={user_token}"
+    )
+
+    data = {
+        "recipient": phone_number,
+        "channel_type": "whatsapp",
+        "template_name": "property_analysis_complete",
+        "context": {
+            "analysis_url": analysis_url,
+            "analysis_data": analysis_data,
+            # more data here if necessary
+        },
+    }
+
+    try:
+        response = requests.post(notification_service_url, json=data, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        # Handle exceptions or retry
+        pass
 
 
 {
