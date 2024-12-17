@@ -44,7 +44,8 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
     property_instance = await Property.objects.aget(
         id=property_id, phone_number=phone_number
     )
-    user_token, created = await UserToken.objects.get(phone_number=phone_number)
+    user_token_obj = await UserToken.objects.aget(phone_number=phone_number)
+    user_token = user_token_obj.token
 
     logger.info(f"Property instance retrieved: {property_instance}")
 
@@ -254,9 +255,8 @@ async def analyze_property_async(property_id, task_id, phone_number, job_id, sou
             logger.info(f"Final message: {final_message}")
             notify_user(phone_number, user_token, property_id, result)
         else:
-            logger.info("Final results will be sent via WebSockets.")
-            # For frontend users, they will receive updates via WebSockets
-            pass
+            logger.info("Final results will be sent via WebSockets and whatsapp.")
+            notify_user(phone_number, user_token, property_id, result)
     except Exception as e:
         logger.info(f"An error occurred: {str(e)}")
         await update_progress("error", f"Error during analysis: {str(e)}", 0.0)
@@ -297,7 +297,7 @@ def notify_user(phone_number, user_token, property_id, analysis_data):
     notification_service_url = f"{settings.NOTIFICATION_APP}/api/notifications/notify/"
 
     analysis_url = (
-        f"{settings.FRONTEND_APP}/properties/{property_id}/?token={user_token}"
+        f"{settings.FRONTEND_APP}/property-analysis/{property_id}/?token={user_token}"
     )
 
     data = {
